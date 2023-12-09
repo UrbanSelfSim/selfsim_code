@@ -1,0 +1,112 @@
+to death-model  
+  let n1 0
+  (ifelse 
+    year = 2021 [set n1 round (item 0 Ndeath / 1000)]
+    year = 2022 [set n1 round (item 1 Ndeath / 1000)]
+    year = 2023 [set n1 round (item 2 Ndeath / 1000)]
+    year = 2024 [set n1 round ( item 3 Ndeath / 1000)]
+    year = 2025 [set n1 round ( item 4 Ndeath / 1000)]
+    year = 2026 [set n1 round ( item 5 Ndeath / 1000)]
+    year = 2027 [set n1 round ( item 6 Ndeath / 1000)]
+    year = 2028 [set n1 round ( item 7 Ndeath / 1000)]
+    year = 2029 [set n1 round ( item 8 Ndeath / 1000)]
+    year = 2030 [set n1 round ( item 9 Ndeath / 1000)]
+    year = 2031 [set n1 round ( item 10 Ndeath / 1000)]
+    [set n1 round ( item 11 Ndeath / 1000)]
+  )
+  
+  ;54岁以下死亡
+  let i 1
+  let num-death1 0.25 * n1
+  while [i <= num-death1]
+  [
+    set i i + 1
+    let target one-of people with [age <= 54]
+    ask target
+    [
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      [
+        let hhd1 hhd
+        set relationship 0
+        ifelse (count other people with [hhd = hhd1 and age >= 18] > 0)
+        [ask one-of other people with [hhd = hhd1 and age >= 18] [set relationship 1]]
+        [ask one-of other people with [hhd = hhd1][set relationship 1]]
+        let hhder one-of people with [hhd = hhd1 and relationship = 1]
+        ask hhder 
+        [
+          update-relationship hhd1 hhder
+          set mandatory [mandatory] of target
+          set flexible [flexible] of target + 1
+          set residence-cost [residence-cost] of target
+          set residence-size [residence-size] of target
+          if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
+          if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+        ]
+      ]
+      die
+    ]
+  ]
+  
+  let num-death2 n1 * 0.4
+  set i 1
+  while [i <= num-death2]
+  [
+    set i i + 1
+    let target one-of people with [age >= 55 and age <= 79]
+    ask target
+    [
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      [
+        let hhd1 hhd
+        set relationship 0
+        ifelse (count other people with [hhd = hhd1 and age >= 18] > 0)
+        [ask one-of other people with [hhd = hhd1 and age >= 18] [set relationship 1]]
+        [ask one-of other people with [hhd = hhd1][set relationship 1]]
+        let hhder one-of people with [hhd = hhd1 and relationship = 1]
+        ask hhder 
+        [
+          update-relationship hhd1 hhder
+          set mandatory [mandatory] of target
+          set flexible [flexible] of target + 1
+          set residence-cost [residence-cost] of target
+          set residence-size [residence-size] of target
+          if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
+          if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+        ]
+      ]
+      die
+    ]
+  ]
+  
+  let num-death3 n1 * 0.35
+  set i 1
+  while [i <= num-death3]
+  [
+    set i i + 1
+    let target one-of people with [age >= 80]
+    ask target
+    [
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      [
+        let hhd1 hhd
+        set relationship 0
+        ifelse (count other people with [hhd = hhd1 and age >= 18] > 0)
+        [ask one-of other people with [hhd = hhd1 and age >= 18] [set relationship 1]]
+        [ask one-of other people with [hhd = hhd1][set relationship 1]]
+        let hhder one-of people with [hhd = hhd1 and relationship = 1]
+        ask hhder 
+        [
+          update-relationship hhd1 hhder
+          set mandatory [mandatory] of target
+          set flexible [flexible] of target + 1
+          set residence-cost [residence-cost] of target
+          set residence-size [residence-size] of target
+          if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
+          if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+        ]
+      ]
+      die
+    ]
+  ]
+  print "death model finished"
+end

@@ -1,0 +1,197 @@
+schools-own
+[
+  SchID ;ID of school
+  District 
+  Long ;longitude
+  lat ;latitude
+  category ;category of school 1-kindergarten; 2-primary school; 3-middle school 4-high school; 5-college; 6-university
+  capacity ;The maximum number of students can study in this school (the number of students in high school, college, and university will not be limited by capacity in this case, but capacity depends the probability a student will choose the school)
+  increase ;This is a variable to record how mucn years the school have meet the requirement to rise its capacity
+  decrease ;This is a variable to record how mucn years the school have meet the requirement to decrease its capacity
+  staff ;number of staffs required
+  Num-student ;number of students in the school
+]
+
+to school-model
+  school-birth
+  school-growth
+  school-closure
+  school-staff
+  ask schools [set num-student count in-student-neighbors]
+  print "school-model finished"
+end
+
+to school-birth
+  ;This function is used to simulate birth of school. The following rules are designed based on the situation in cities in mainland China.
+  ;Kindergarten, primary school, middle school and high school: if in a district, the number of a kind of students (e.g., students in primary school) is greater than a threshold ('T-school-birth' X maximum number of students), new schools will be devloped
+  ;College and university will not be devloped in this case.
+  let districtid 1
+  let max-districtid max [district] of schools
+  while [districtid <= max-districtid]
+  [
+    ;Birth of kindergarten
+    if sum [count in-student-neighbors] of schools with [category = 1 and district = districtid] >= T-school-birth * sum [capacity] of schools with [district = districtid and category = 1]
+    [
+      create-schools 2
+      [
+        set SchID max [SchID] of schools + 1
+        set category 1
+        set Capacity 4
+        move-to one-of patches with [Pdistrict = districtid]
+        set staff 1
+        set district [pdistrict] of patch-here
+      ]
+    ]
+    
+    ;Birth of primary school
+    if sum [count in-student-neighbors] of schools with [category = 2 and district = districtid] >= T-school-birth * sum [capacity] of schools with [district = districtid and category = 2]
+    [
+      create-schools 1
+      [
+        set category 2
+        set Capacity int (mean [capacity] of schools with [category = 2] + 0.5)
+        move-to one-of patches with [Pdistrict = districtid]
+        ifelse capacity >= 4 [set staff int (capacity / 4 + 0.5)][set staff 1]
+        set SchID max [SchID] of schools + 1
+        set district [pdistrict] of patch-here
+      ]
+    ]
+    
+    ;Birth of middle school
+    if sum [count in-student-neighbors] of schools with [district = districtid and category = 3] >= T-school-birth * sum [capacity] of schools with [district = districtid and category = 3]
+    [
+      create-schools 1
+      [
+        set category 3
+        set Capacity round (mean [capacity] of schools with [category = 3])
+        move-to one-of patches with [Pdistrict = districtid]
+        ifelse capacity >= 4 [set staff round (capacity / 4)][set staff 1]
+        set SchID max [SchID] of schools + 1
+        set district [pdistrict] of patch-here
+      ]
+    ]
+    
+    ;Birth of high school
+    if sum [count in-student-neighbors] of schools with [category = 4 and district = districtid] >= T-school-birth * sum [capacity] of schools with [district = districtid and category = 4]
+    [
+      create-schools 1
+      [
+        set category 4
+        set Capacity int (mean [capacity] of schools with [category = 4] + 0.5)
+        move-to one-of patches with [Pdistrict = districtid]
+        ifelse capacity >= 4 [set staff int (capacity / 4 + 0.5)][set staff 1]
+        set SchID max [SchID] of schools + 1
+        set district [pdistrict] of patch-here
+      ]
+    ] 
+   set districtid districtid + 1   
+  ]  
+  
+  ;Calculate longitude and latitude based on netlogo coordinates
+  if count schools with [long = 0 and lat = 0] > 0
+  [
+    let long1 []
+    let lat1 []
+    let xcor1 []
+    let ycor1 []
+    ask schools with [long != 0 and lat != 0]
+    [
+      set xcor1 lput xcor xcor1
+      set ycor1 lput ycor ycor1
+      set long1 lput long long1
+      set lat1 lput lat lat1
+    ]
+    py:set "xcor1" xcor1
+    py:set "ycor1" ycor1
+    py:Set "long1" long1
+    py:set "lat1" lat1  
+    ask schools with [long = 0 and lat = 0]
+    [
+      py:set "xcor2" xcor
+      py:Set "ycor2" ycor
+      (py:run
+        "import numpy as np"
+        "from scipy.optimize import curve_fit"
+        "import pandas as pd"
+        "def polynomial_function(x, a, b, c, d):"
+        " return a * x**3 + b * x**2 + c * x + d"
+        
+        "params_x, _ = curve_fit(polynomial_function, xcor1, long1)"
+        "params_y, _ = curve_fit(polynomial_function, ycor1, lat1)"
+        "long2 = polynomial_function(xcor2, *params_x)"
+        "lat2 = polynomial_function(ycor2, *params_y)"
+     )
+      set long py:runresult "long2"
+      set lat py:runresult "lat2"
+    ]
+  ]
+end
+
+  ;Schools' capacity increases and decreases
+  ;In this case, except from kendergartens, other schools' capacity will increase if the number of students is greater than the capacity plus 'T-school-increase' for consecutve years, and will decrease if the number of students is smaller than the capacity plus 'T-school-decrease' for consecutve years
+to school-growth
+  ask schools with [category >= 2]
+  [
+    ;check if the number of students is greater than or small than thresholds
+    if capacity * T-school-increase <= count in-student-neighbors [set decrease 0 set increase increase + 1]
+    if capacity * T-school-decrease >= count in-student-neighbors [set decrease decrease + 1 set increase 0]
+
+    ;capacity increase
+    let r-increase 0.1 ;the ratio of increase
+    if increase = 3 
+    [
+      let increase1 round (capacity * r-increase)
+      ifelse increase1 >= 1 [set capacity capacity + increase1][set capacity capacity + 1]
+      set increase 0
+    ]
+    
+    ;capacity decrease
+    let r-decrease 0.1 ;the ratio of decrease
+    if decrease = 3 and capacity > 4
+    [
+      let decrease1 round (capacity * r-decrease)
+      ifelse decrease1 >= 1 [set capacity capacity - decrease1][set capacity capacity - 1]
+      set decrease 0
+    ]
+  ]
+end
+
+
+to school-closure
+  ;if the capacity of a school is small than 4, and the attribute 'decrease' is equal to 3 (which means its number of students is below than 'T-school-decrease' plus capacity for 3 years), the school will close.
+  ask schools with [capacity <= 4 and decrease = 3]
+  [
+    ;students will be allocated to other schools
+    let school1 nobody
+    ifelse category <= 3
+    [set school1 one-of schools with [category = [category] of myself and (capacity - count in-student-neighbors) > [count in-student-neighbors] of myself]]
+    [set school1 one-of schools with [category = [category] of myself]]
+    ask in-student-neighbors
+    [
+      ask my-students [die]
+      create-student-with school1
+      set wslong [long] of school1
+      set wslat [lat] of school1
+      ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+      ask my-shoppings with [loc = 1][die]
+      ask my-leisures with [loc = 1][die]
+    ]
+    
+    ;staffs will break their employee linkk with the school, and will break shopping and leisuring links arround the school
+    ask in-employee-neighbors
+    [
+      ask my-employees [die]
+      ask my-shoppings with [loc = 1][die]
+      ask my-leisures with [loc = 1][die]
+    ]
+    die
+  ]
+end
+
+to school-staff
+  ;Update the staff each school needed according to its number of students. Note: kindergartens capacity will not change, thus, their required staff will not be updated. 
+  ask schools with [category >= 2]
+  [
+    ifelse capacity >= 4 [set staff int (capacity / 4 + 0.5)] [set staff 1]
+  ]
+end

@@ -1,0 +1,294 @@
+to setup-agent
+  setup-map
+  setup-people
+  setup-residence
+  setup-OBs
+  setup-CBs
+  setup-schools
+  setup-shops
+  setup-firms
+end
+
+to setup-people
+  let people-dataset gis:load-dataset "Input data/household.shp"
+  foreach gis:feature-list-of people-dataset
+  [
+    vector-feature ->
+;    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let pid1 gis:property-value vector-feature "pid"
+    let hhd1 gis:property-value vector-feature "hid"
+    ;let age1 gis:property-value vector-feature "Age"
+    let age-group1 gis:property-value vector-feature "Age_group"
+    let gender1 gis:property-value vector-feature  "Gender"
+    let income1  gis:property-value vector-feature "Income"
+    let education1 gis:property-value vector-feature "Education"
+    let license1 gis:property-value vector-feature "license"
+    let number1 gis:property-value vector-feature "number"  
+    let status1 gis:property-value vector-feature "status"  
+    
+;    let cv1 gis:property-value vector-feature "CV"
+;    let bev1 gis:property-value vector-feature "BEV"
+;    let phev1 gis:property-value vector-feature "PHEV"
+;    let long-coord item 0 coord-tuple
+;    let lat-coord item 1 coord-tuple
+
+  set-default-shape people "circle"
+
+    create-people 1 [
+;     setxy long-coord lat-coord
+      setxy random-pxcor random-pycor
+      set pid pid1
+      set hhd hhd1
+      ;set Age age1
+      (ifelse
+        age-group1 = 1 [set age random 18]
+        age-group1 = 2 [set age 18 + random 7]
+        age-group1 = 3 [set age 25 + random 10]
+        age-group1 = 4 [set age 35 + random 10]
+        age-group1 = 5 [set age 45 + random 10]
+        age-group1 = 6 [set age 55 + random 10]
+        ;age-group1 = 7 
+        [set age 65 + random 35]
+       ) 
+      set Gender gender1
+      set Income income1 / 12
+      set License license1
+      set number number1
+      set education-level education1
+      set age-group age-group1
+      set status status1
+      
+;      set cv cv1
+;      set phev phev1
+;      set bev bev1
+      
+      ;临时设置，之后调整
+;      set adv random 2
+;      set fri random 2
+;      set nei random 2
+;      set buybev 1 + random 4
+;      set buyphev 1 + random 4
+   
+    ]
+  ]
+; color and size
+  ask people 
+  [
+    set size 0.5
+    set color white
+    set hhd-income sum [income] of people with [hhd = [hhd] of myself]
+  ]
+end
+
+to setup-map
+  let Shenzhen-dataset gis:load-dataset "Input data/Shenzhen_map.shp"
+  gis:set-world-envelope (gis:envelope-of shenzhen-dataset)
+  let i 1
+  foreach gis:feature-list-of Shenzhen-dataset 
+  [
+    feature ->
+    ask patches gis:intersecting feature 
+    [
+      set centroid gis:location-of gis:centroid-of feature
+      ask patch item 0 centroid item 1 centroid 
+      [
+        set ID i
+      ]
+    ]
+      set i i + 1
+  ]
+  gis:set-drawing-color white
+  gis:draw shenzhen-dataset 1
+  
+  gis:apply-coverage shenzhen-dataset "NAME" pdistrict
+  ask patches
+  [
+    (ifelse
+      pdistrict = "Luohu" [set pdistrict 1]
+      pdistrict = "Futian" [set pdistrict 2]
+      pdistrict = "Nanshan" [set pdistrict 3]
+      pdistrict = "Baoan" [set pdistrict 4]
+      pdistrict = "Longgang" [set pdistrict 5]
+      pdistrict = "Yantian" [set pdistrict 6]
+      pdistrict = "Longhua" [set pdistrict 7]
+      pdistrict = "Pingshan" [set pdistrict 8]
+      [set pdistrict 0]
+      )
+  ]
+end
+
+to setup-residence
+  let residence-dataset gis:load-dataset "Input data/residence.shp"
+  foreach gis:feature-list-of residence-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let price1 gis:property-value vector-feature "price"
+    ;let rent1 gis:property-value vector-feature "rent"
+    let rid1 gis:property-value vector-feature "RID"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "lat"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape residences "house"
+    
+    create-residences 1
+    [
+      set purchasing price1
+      set rid rid1
+      set capacity capacity1
+      setxy long-coord lat-coord
+      set long long1
+      set lat lat1
+      set Rrent purchasing / 50
+      set initial-capacity capacity 
+    ]
+  ]
+  ask residences [set size 0.5 set color green]
+end
+
+to setup-OBs
+  let OB-dataset gis:load-dataset "Input data/OBs.shp"
+  foreach gis:feature-list-of OB-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let rent1 gis:property-value vector-feature "price"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "lat"
+    let OID1 gis:property-value vector-feature "OID_1"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape OBs "house"
+    create-obs 1
+    [
+      set frent rent1
+      set capacity capacity1
+      set long long1
+      set lat lat1
+      set OID OID1
+      setxy long-coord lat-coord
+      set initial-capacity capacity
+    ]
+  ]
+  ask OBs [set size 0.5 set color blue]
+end
+
+to setup-CBs
+  let CB-dataset gis:load-dataset "Input data/CBs.shp"
+  foreach gis:feature-list-of CB-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let rent1 gis:property-value vector-feature "price"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "lat"
+    let CID1 gis:property-value vector-feature "CID"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape CBs "house"
+    create-CBs 1
+    [
+      set Srent rent1
+      set capacity capacity1
+      set long long1
+      set lat lat1
+      set CID CID1
+      setxy long-coord lat-coord
+      set initial-capacity capacity
+    ]
+  ]
+  ask CBs [set size 0.5 set color blue]
+end
+
+to setup-firms
+  let firm-dataset gis:load-dataset "Input data/firms.shp"
+  foreach gis:feature-list-of firm-dataset
+  [
+    vector-feature ->
+    let FID1 gis:property-value vector-feature "FID_"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let age1 gis:property-value vector-feature "age"
+    let location1 gis:property-value vector-feature "location"
+    set-default-shape firms "triangle"
+    create-firms 1
+    [
+      set FID FID1
+      set capacity capacity1
+      set age age1
+      let target one-of obs with [OID = location1]
+      move-to target
+      set long [long] of target
+      set lat [lat] of target
+      set office-size capacity
+      set office-cost office-size * [frent] of target
+      set office-cost-next office-cost
+      ask target [set capacity capacity - [office-size] of myself]
+      create-rent-with target
+    ]
+  ]
+  ask firms [set size 0.5 set color orange]
+end
+
+to setup-shops
+  let shop-dataset gis:load-dataset "Input data/shops.shp"
+  foreach gis:feature-list-of shop-dataset
+  [
+    vector-feature ->
+    let shid1 gis:property-value vector-feature "ShID"
+    let capacity1 gis:property-value vector-feature "size"
+    let location1 gis:property-value vector-feature "location"
+    let staff1 gis:property-value vector-feature "staff"
+    set-default-shape firms "triangle"
+    create-shops 1
+    [
+      set SID SHID1
+      set category random 2 + 1
+      set capacity capacity1
+      set staff staff1
+      let target one-of cbs with [CID = location1]
+      move-to target
+      set long [long] of target
+      set lat [lat] of target
+      ask target [set capacity capacity - [capacity] of myself]
+      set rent-cost [srent] of target * capacity
+      create-rent-with target
+    ]
+  ]
+  ask shops [set size 0.5 set color Magenta]
+end
+
+to setup-schools
+  let school-dataset gis:load-dataset "Input data/schools.shp"
+  foreach gis:feature-list-of school-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let long1 gis:property-value vector-feature "Long"
+    let lat1 gis:property-value vector-feature "Lat"
+    let SchID1 gis:property-value vector-feature "ScID"
+    let Category1 gis:property-value vector-feature "Category"
+    let capacity1 gis:property-value vector-feature "Capacity"
+    let staff1 gis:property-value vector-feature "Staff"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape firms "triangle"
+    
+    create-schools 1
+    [
+      set SchID SchID1
+      setxy long-coord lat-coord
+      set long long1
+      set lat lat1
+      set category category1
+      set capacity capacity1
+      set staff staff1
+      set district [pdistrict] of patch-here
+    ]
+  ]
+  
+  ask schools [set size 0.5 set color yellow]
+end

@@ -1,0 +1,291 @@
+;commercial building
+CBs-own
+[
+  CID ;ID of commercial building
+  Long
+  Lat
+  Capacity ;remaining capacity
+  Initial-Capacity ;initial capacity
+  SRent ;rent 
+  Srent-max ;The maximum rent of the office building can rise to in this simulation year
+  Srent-min ;The minimum rent of the office building can decrease to in this simulation year
+  Traffic ;The traffic of a commercial building is the sum of traffic of all shops in this commercial buidlding
+  Agg-shopping ;agglomeration of the shops for shopping, which is the sum of capacity of surrouding shops for shopping
+  Agg-leisure ;agglomeration of the shops for leisuring, which is the sum of capacity of surrouding shops for leisuring
+  attractiveness ;attractiveness
+]
+
+Shops-own
+[
+  SID
+  Category ;1- place for shopping; 2- place for leisuring
+  Capacity ;size of shop, which determines the probability a consumer consuming here
+  rent-cost ;rent the shop, equals to Srent of the cb * capacity
+  Long ;longitude
+  Lat ;latitude
+  location-choice ;whether need to choose a location
+  staff ;number of staff required
+  Traffic ;traffic of shops
+]
+
+csrents-own
+[
+  Lrent
+  Lagg
+  Ltraffic
+  Ulocation
+]
+
+
+to shop-model
+  ;update daily plan of people 
+  update-daily-plan
+  ;update shops' traffic
+  develop-new-CB
+  ask shops
+  [
+    ifelse category = 1
+    [set traffic sum [frequency] of my-shoppings]
+    [set traffic sum [frequency] of my-leisures]
+  ]
+  ;update CBs' agglomeration and traffic
+  ask CBs
+  [
+    ;update agg
+    set agg-shopping sum [capacity] of shops in-radius 2.5 with [category = 1]
+    set agg-leisure sum [capacity] of shops in-radius 2.5 with [category = 2]
+    ;update traffic
+    set traffic sum [traffic] of in-rent-neighbors
+    ;update max rent and minimum rent
+    set Srent-max Srent + Srent * Max-CB-rent
+    set Srent-min Srent + Srent * Min-CB-rent
+  ]
+  shop-closure
+  shop-birth
+  shop-location-choice
+  print "shop-model finished"
+end
+
+to Shop-birth  
+  ;The total capacity of shops is related to the population
+  let R-shopping 0.265
+  let R-leisure 0.265
+  let capacity-shopping count people * R-shopping
+  if sum [capacity] of shops with [category = 1] < capacity-shopping
+  [
+    let num-new-shopping round ((capacity-shopping - sum [capacity] of shops with [category = 1]) / mean [capacity] of shops with [category = 1])
+    create-shops num-new-shopping
+    [
+      set SID max [SID] of shops + 1
+      set category 1
+      set location-choice 1
+      set capacity round (mean [capacity] of shops with [category = 1]) 
+      set staff round (capacity / 3) ;calculate the number of staffs a shop needed, the capacity-staff ratio could be adjusted
+      if staff = 0 [set staff 1]
+    ]
+  ]
+  
+  let capacity-leisure count people * R-leisure
+  if sum [capacity] of shops with [category = 2] < capacity-shopping
+  [
+    let num-new-leisure round ((capacity-leisure - sum [capacity] of shops with [category = 2]) / mean [capacity] of shops with [category = 2])
+    create-shops num-new-leisure
+    [
+      set SID max [SID] of shops + 1
+      set category 2
+      set location-choice 1
+      set capacity round (mean [capacity] of shops with [category = 2])
+      set staff round (capacity / 3) ;calculate the number of staffs a shop needed, the capacity-staff ratio could be adjusted
+      if staff = 0 [set staff 1]
+    ]
+  ]
+end
+
+to shop-closure
+  ;shop closure
+  ask shops with [Traffic / capacity < T-shop-closure * ([srent] of one-of CBs with [rent-neighbor? myself] / mean [srent] of CBs)] ;if the traffic per capacity is below to a threshold (the threshold is related to the rent of shop), the shop will close
+  [
+    ask in-rent-neighbors [set capacity capacity + [capacity] of myself]
+    
+    ;update behaviors of staffs here
+    ask in-employee-neighbors 
+    [
+      ask my-employees [die] ;break the link 
+      ;clear shopping and leisure behaviors near the shop
+      ask my-shoppings with [loc = 1][die]
+      ask my-leisures with [loc = 1][die]
+    ]
+    die
+  ]
+  ;update capacity of commercial buildings
+  ask CBs [set capacity initial-capacity - sum [capacity] of in-rent-neighbors]
+end
+
+;simulate new shops' location choice 
+to shop-location-choice
+  let i 1
+  let max-num-CBs 5 
+  while [i <= 5] ;5 times negotiation
+  [
+    set i i + 1
+    ask shops with [location-choice = 1]
+    [
+      ;in each negotiation, if the number of candidates is below than the variable 'max-num-CBs', shop will seek for some new candidates
+      ask shops with [count in-csrent-neighbors < max-num-CBs]
+      [
+         let n1 0
+         ifelse count CBs with [capacity > [capacity] of myself] > (max-num-CBs - count in-csrent-neighbors) [set n1 max-num-CBs - count in-csrent-neighbors][set n1 count in-csrent-neighbors]
+         ask n-of n1 cbs with [capacity > [capacity] of myself]
+         [
+          let renter myself
+          create-csrent-with renter
+          ask one-of my-csrents with [other-end = renter]
+          [
+            ;record utility of cost
+            set Lrent ([srent] of myself / mean [srent] of CBs) - 1
+            ;record utility of agglomeration
+            ifelse [category] of renter = 1 [set Lagg [agg-shopping] of myself / mean [agg-shopping] of CBs - 1] [set Lagg [agg-leisure] of myself / mean [agg-leisure] of CBs - 1]
+            ;record utility of traffic
+            set Ltraffic [traffic] of myself / mean [traffic] of CBs - 1
+            ;calculate total utility
+            set Ulocation W-shop-rent * lrent + W-shop-agg * lagg + W-shop-traffic * Ltraffic
+          ]
+        ]
+      ]
+    ]
+    
+    ;calculate attractiveness of commercial buildings, and update their rent according to their attractiveness
+    
+    let R-increase 0.01 ;The magnitude of rent increase
+    let R-decrease -0.01 ;The magnitude of rent decrease
+
+    ask CBs [set attractiveness 0]
+    ask CBs with [capacity > 0]
+    [
+      set attractiveness sum [capacity] of in-csrent-neighbors / capacity
+      (ifelse 
+        attractiveness > T-CB-increase ;attractiveness is above 'T-CB-increase', CB will increase its rent
+        [
+          set srent srent + R-increase * (attractiveness - T-CB-increase) * srent
+          if srent > Srent-max [set srent Srent-max]
+          
+          ;update its utility, because of rent change
+          ask my-csrents [set Lrent [srent] of myself / mean [srent] of CBs - 1 set Ulocation W-shop-rent * lrent + W-shop-agg * lagg + W-shop-traffic * Ltraffic]
+        ]
+        attractiveness < T-CB-decrease
+        [
+          set srent srent + R-decrease * (attractiveness - T-CB-decrease) * srent
+          if srent < srent-min [set srent Srent-min]
+          
+          ;update its utility, because of rent change
+          ask my-csrents [set Lrent [srent] of myself / mean [srent] of CBs - 1 set Ulocation W-shop-rent * lrent + W-shop-agg * lagg + W-shop-traffic * Ltraffic]
+        ]
+        [set Srent Srent * 1]
+      )
+    ]
+    
+    ask csrents with [Ulocation < 0][die]
+    
+    
+    ;output attractiveness
+;    let file-name-attractiveness (word "Output Data/Annualoutput/cb rent attractiveness" year "round" i ".csv")
+;    file-open file-name-attractiveness
+;    file-print "CID,attractiveness"
+;    ask CBs with [capacity > 0]
+;    [
+;      file-print (word who ", "attractiveness)
+;    ]
+;    file-close
+  ]
+  
+  ;simulate shops rent office buildings after 5 times of negotiation
+  while [count shops with [location-choice = 1 and count in-csrent-neighbors > 0] > 0]
+  [
+    ask one-of shops with [location-choice = 1 and count in-csrent-neighbors > 0]
+    [
+      set location-choice 0
+      let target-link max-one-of my-csrents [Ulocation] ;select one-of office building with the highest utility, and record it as target
+      let target [other-end] of target-link
+      ask my-cfrents [die]
+      create-rent-with target
+      set long [long] of target
+      set lat [lat] of target
+      ask one-of CBs with [rent-neighbor? myself] [set capacity capacity - [capacity] of myself]
+    ]
+  ] 
+  
+  ;If no suitable building is found in above renting behviors, shops with will rent the building with the lowest rent on the market.
+  ask shops with [location-choice = 1]
+  [
+    let target min-one-of CBs with [capacity >= [capacity] of myself] [srent]
+    set location-choice 0
+    create-rent-with target
+    set long [long] of target
+    set lat [lat] of target
+    ask one-of CBs with [rent-neighbor? myself] [set capacity capacity - [capacity] of myself]
+  ]
+end
+
+
+to develop-new-CB
+  ;update demand of CB of patches with space by surrounding rent of CBs
+  ask patches with [pdistrict != 0 and count turtles-here = 0]
+  [
+    let my-neighbors neighbors with [pdistrict != 0]
+    if my-neighbors != nobody
+    [
+      set dem-cb sum [srent] of CBs-on my-neighbors / count my-neighbors
+    ]
+  ]
+  
+  ;find N of patches with highest demand of CBs, and record them with blue
+  ask max-n-of 5 patches [dem-cb][set pcolor blue]
+  
+  create-CBs 5
+  [
+    set initial-capacity 20 ;define capacity of each OBs
+    set capacity initial-capacity
+    move-to one-of patches with [pcolor = blue]
+    ask patch-here [set pcolor 0]
+    set srent mean [srent] of min-n-of 10 CBs [distance myself]
+    set size 0.5 set color green set shape "house"
+  ]
+  
+  ;calculate longitude and latitude
+  let long1 []
+  let lat1 []
+  let xcor1 []
+  let ycor1 []
+  ask OBs with [long != 0 and lat != 0]
+  [
+    set xcor1 lput xcor xcor1
+    set ycor1 lput ycor ycor1
+    set long1 lput long long1
+    set lat1 lput lat lat1
+  ]
+  py:set "xcor1" xcor1
+  py:set "ycor1" ycor1
+  py:Set "long1" long1
+  py:set "lat1" lat1  
+  ask CBs with [long = 0 and lat = 0]
+  [
+    py:set "xcor2" xcor
+    py:Set "ycor2" ycor
+    (py:run
+      "import numpy as np"
+      "from scipy.optimize import curve_fit"
+      "import pandas as pd"
+      "def polynomial_function(x, a, b, c, d):"
+      " return a * x**3 + b * x**2 + c * x + d"
+      
+      "params_x, _ = curve_fit(polynomial_function, xcor1, long1)"
+      "params_y, _ = curve_fit(polynomial_function, ycor1, lat1)"
+      "long2 = polynomial_function(xcor2, *params_x)"
+      "lat2 = polynomial_function(ycor2, *params_y)"
+   )
+    set long py:runresult "long2"
+    set lat py:runresult "lat2"
+  ]
+end
+
+

@@ -1,0 +1,258 @@
+to birth-model
+  ;Women aged 20 to 24 giving birth
+  let n1 0
+  (ifelse 
+    year = 2021 [set n1 round (0.11 * item 0 Nbirth / 1000)]
+    year = 2022 [set n1 round (0.11 * item 1 Nbirth / 1000)]
+    year = 2023 [set n1 round (0.11 * item 2 Nbirth / 1000)]
+    year = 2024 [set n1 round (0.11 * item 3 Nbirth / 1000)]
+    year = 2025 [set n1 round (0.11 * item 4 Nbirth / 1000)]
+    year = 2026 [set n1 round 0.11 * item 5 Nbirth / 1000]
+    year = 2027 [set n1 round (0.11 * item 6 Nbirth / 1000)]
+    year = 2028 [set n1 round (0.11 * item 7 Nbirth / 1000)]
+    year = 2029 [set n1 round (0.11 * item 8 Nbirth / 1000)]
+    year = 2030 [set n1 round (0.11 * item 9 Nbirth / 1000)]
+    year = 2031 [set n1 round (0.11 * item 10 Nbirth / 1000)]
+    [set n1 round (0.11 * item 11 Nbirth / 1000)]
+  )
+  ask n-of n1 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 20 and age <= 24 ]
+  [
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+    let ft one-of people with [couple-neighbor? myself]
+    hatch 1
+    [
+      set pid max [pid] of people + 1
+      set age 0
+      set income 0
+      set gender random 2
+      set status 1
+      set education 0 
+      set edu-year 1
+      set edu-year-required 3
+      set license 0
+      set wslong 0
+      set wslat 0
+      set flexible 0
+      set mandatory 0
+      set residence-cost 0
+      set residence-size 0
+      set current-accessibility 0
+      set max-friend 0
+      set min-friend 0
+      set my-score 0
+      set relationship 0
+      
+      create-parent-with myself
+      create-parent-with ft
+      if ([relationship] of myself <= 2) [set relationship 3]
+      if ([relationship] of myself = 4) [set relationship 11]
+      if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+      if (relationship = 0) [set relationship 12]
+    ]
+    ask people with [hhd = [hhd] of myself ][set number number + 1]
+  ]
+  
+  ;Women aged 25 to 29 giving birth
+  let n2 0
+  (ifelse 
+    year = 2021 [set n2 round (0.35 * item 0 Nbirth / 1000)]
+    year = 2022 [set n2 round (0.35 * item 1 Nbirth / 1000)]
+    year = 2023 [set n2 round (0.35 * item 2 Nbirth / 1000)]
+    year = 2024 [set n2 round (0.35 * item 3 Nbirth / 1000)]
+    year = 2025 [set n2 round (0.35 * item 4 Nbirth / 1000)]
+    year = 2026 [set n2 round 0.35 * item 5 Nbirth / 1000]
+    year = 2027 [set n2 round (0.35 * item 6 Nbirth / 1000)]
+    year = 2028 [set n2 round (0.35 * item 7 Nbirth / 1000)]
+    year = 2029 [set n2 round (0.35 * item 8 Nbirth / 1000)]
+    year = 2030 [set n2 round (0.35 * item 9 Nbirth / 1000)]
+    year = 2031 [set n2 round (0.35 * item 10 Nbirth / 1000)]
+    [set n2 round (0.35 * item 11 Nbirth / 1000)]
+  )
+  ask n-of n2 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 25 and age <= 29] 
+  [
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+    let ft one-of people with [couple-neighbor? myself]
+    hatch 1
+    [
+      set pid max [pid] of people + 1
+      set age 0
+      set income 0
+      set gender random 2
+      set status 1
+      set education 0 
+      set edu-year 1
+      set edu-year-required 3
+      set license 0
+      set wslong 0
+      set wslat 0
+      set flexible 0
+      set mandatory 0
+      set residence-cost 0
+      set residence-size 0
+      set current-accessibility 0
+      set max-friend 0
+      set min-friend 0
+      set my-score 0
+      set relationship 0
+      create-parent-with myself
+      create-parent-with ft
+      if ([relationship] of myself <= 2) [set relationship 3]
+      if ([relationship] of myself = 4) [set relationship 11]
+      if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+      if (relationship = 0) [set relationship 12]
+    ]
+  ]
+  
+  ;Women aged 30 to 34 giving birth
+  let n3 0
+  (ifelse 
+    year = 2021 [set n3 round (0.37 * item 0 Nbirth / 1000)]
+    year = 2022 [set n3 round (0.37 * item 1 Nbirth / 1000)]
+    year = 2023 [set n3 round (0.37 * item 2 Nbirth / 1000)]
+    year = 2024 [set n3 round (0.37 * item 3 Nbirth / 1000)]
+    year = 2025 [set n3 round (0.37 * item 4 Nbirth / 1000)]
+    year = 2026 [set n3 round 0.37 * item 5 Nbirth / 1000]
+    year = 2027 [set n3 round (0.37 * item 6 Nbirth / 1000)]
+    year = 2028 [set n3 round (0.37 * item 7 Nbirth / 1000)]
+    year = 2029 [set n3 round (0.37 * item 8 Nbirth / 1000)]
+    year = 2030 [set n3 round (0.37 * item 9 Nbirth / 1000)]
+    year = 2031 [set n3 round (0.37 * item 10 Nbirth / 1000)]
+    [set n3 round (0.37 * item 11 Nbirth / 1000)]
+  )
+  ask n-of n3 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 30 and age <= 34] 
+  [
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+    let ft one-of people with [couple-neighbor? myself]
+    hatch 1
+    [
+      set pid max [pid] of people + 1
+      set age 0
+      set income 0
+      set gender random 2
+      set status 1
+      set education 0 
+      set edu-year 1
+      set edu-year-required 3
+      set license 0
+      set wslong 0
+      set wslat 0
+      set flexible 0
+      set mandatory 0
+      set residence-cost 0
+      set residence-size 0
+      set current-accessibility 0
+      set max-friend 0
+      set min-friend 0
+      set my-score 0
+      set relationship 0
+      create-parent-with myself
+      create-parent-with ft
+      if ([relationship] of myself <= 2) [set relationship 3]
+      if ([relationship] of myself = 4) [set relationship 11]
+      if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+      if (relationship = 0) [set relationship 12]
+    ]
+  ]
+  
+  ;Women aged 35 to 39 giving birth
+  let n4 0
+  (ifelse 
+    year = 2021 [set n4 round (0.14 * item 0 Nbirth / 1000)]
+    year = 2022 [set n4 round (0.14 * item 1 Nbirth / 1000)]
+    year = 2023 [set n4 round (0.14 * item 2 Nbirth / 1000)]
+    year = 2024 [set n4 round (0.14 * item 3 Nbirth / 1000)]
+    year = 2025 [set n4 round (0.14 * item 4 Nbirth / 1000)]
+    year = 2026 [set n4 round 0.14 * item 5 Nbirth / 1000]
+    year = 2027 [set n4 round (0.14 * item 6 Nbirth / 1000)]
+    year = 2028 [set n4 round (0.14 * item 7 Nbirth / 1000)]
+    year = 2029 [set n4 round (0.14 * item 8 Nbirth / 1000)]
+    year = 2030 [set n4 round (0.14 * item 9 Nbirth / 1000)]
+    year = 2031 [set n4 round (0.14 * item 10 Nbirth / 1000)]
+    [set n4 round (0.14 * item 11 Nbirth / 1000)]
+  )
+  ask n-of n4 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 35 and age <= 39] 
+  [
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+    let ft one-of people with [couple-neighbor? myself]
+    hatch 1
+    [
+      set pid max [pid] of people + 1
+      set age 0
+      set income 0
+      set gender random 2
+      set status 1
+      set education 0 
+      set edu-year 1
+      set edu-year-required 3
+      set license 0
+      set wslong 0
+      set wslat 0
+      set flexible 0
+      set mandatory 0
+      set residence-cost 0
+      set residence-size 0
+      set current-accessibility 0
+      set max-friend 0
+      set min-friend 0
+      set my-score 0
+      set relationship 0
+      create-parent-with myself
+      create-parent-with ft
+      if ([relationship] of myself <= 2) [set relationship 3]
+      if ([relationship] of myself = 4) [set relationship 11]
+      if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+      if (relationship = 0) [set relationship 12]
+    ]
+  ]
+  
+  ;Women aged 40 to 44 giving birth
+  let n5 0
+  (ifelse 
+    year = 2021 [set n5 round (0.03 * item 0 Nbirth / 1000)]
+    year = 2022 [set n5 round (0.03 * item 1 Nbirth / 1000)]
+    year = 2023 [set n5 round (0.03 * item 2 Nbirth / 1000)]
+    year = 2024 [set n5 round (0.03 * item 3 Nbirth / 1000)]
+    year = 2025 [set n5 round (0.03 * item 4 Nbirth / 1000)]
+    year = 2026 [set n5 round 0.03 * item 5 Nbirth / 1000]
+    year = 2027 [set n5 round (0.03 * item 6 Nbirth / 1000)]
+    year = 2028 [set n5 round (0.03 * item 7 Nbirth / 1000)]
+    year = 2029 [set n5 round (0.03 * item 8 Nbirth / 1000)]
+    year = 2030 [set n5 round (0.03 * item 9 Nbirth / 1000)]
+    year = 2031 [set n5 round (0.03 * item 10 Nbirth / 1000)]
+    [set n5 round (0.03 * item 11 Nbirth / 1000)]
+  )
+  ask n-of n5 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 40 and age <= 44] 
+  [
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
+    let ft one-of people with [couple-neighbor? myself]
+    hatch 1
+    [
+      set pid max [pid] of people + 1
+      set age 0
+      set income 0
+      set gender random 2
+      set status 1
+      set education 0 
+      set edu-year 1
+      set edu-year-required 3
+      set license 0
+      set wslong 0
+      set wslat 0
+      set flexible 0
+      set mandatory 0
+      set residence-cost 0
+      set residence-size 0
+      set current-accessibility 0
+      set max-friend 0
+      set min-friend 0
+      set my-score 0
+      set relationship 0
+      create-parent-with myself
+      create-parent-with ft
+      if ([relationship] of myself <= 2) [set relationship 3]
+      if ([relationship] of myself = 4) [set relationship 11]
+      if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+      if (relationship = 0) [set relationship 12]
+    ]
+  ]
+end

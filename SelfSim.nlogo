@@ -127,6 +127,26 @@ people-own
 
   distance-max  ;Acceptable commuting distance
 
+  ;behaviors of energy consumption
+  daytime-temp-air ;The temperature of the air conditioner cooling setting during daytime
+  night-temp-air ;The temperature of the air conditioner cooling setting during night
+  month-cool ;Month of using air conditioner for cooling
+  weekday-hour ;Hour of using air conditioner for cooling on weekday
+  weekend-hour ;Hour of using air conditioner for cooling on weekend
+  fre-cook ;Frequency of cooking
+
+  ;appliance
+  air ;Number of air conditioner
+  bread ;Bread machine
+  electro ;Electromagnetic furnace
+  rice ;Rice cooker
+  pressure ;Pressure cooker
+  baking ;Baking pan
+  pot
+  milk ;Soy milk
+  microwave ;Microwave oven
+  led
+
 ]
 
 to setup

@@ -1,10 +1,7 @@
 to initialization
   read-numbers
   initialize-frequency
-  initialize-education
-  find-hhder
   initialize-relationship
-  initialize-residence
   initialize-work-study-location
 end
 
@@ -138,7 +135,6 @@ to read-numbers
     set max-friend item (friend-id - 1) maxfriend
     set min-friend item (friend-id - 1) minfriend
   ]
-  
 end
 
 to initialize-frequency
@@ -206,128 +202,8 @@ to initialize-frequency
   ]
 end
 
-to initialize-education
-  ;;0-preschoolers 1-kindergarten 2-primary school 3-middle school 4-polytechnic school 5-high school 6-college degree7- Bachelor degree 8-from college to bachelor 9-master degree 10-PHD
-  ask people with [education-level = 1]
-  [
-    if (Age < 3) [set education 0] ;preschoolers
-    if (Age >= 3 and age <= 5) [set education 1]  ;kindergarten
-    if (age >= 6 and age <= 11) [set education 2] ;primary school
-    if (age >= 12 and age <= 14) [set education 3] ;middle school
-    if (age >= 15 and age <= 18) 
-    [
-      ifelse random-float 1 <= 0.7
-      [set education 5] ;high school
-      [set education 4] ;polytechnic school
-    ]
-    if age > 18 [set education random 5 + 1]
-  ]
-  
-  ask people
-  [
-    if education-level = 2 [set education 6]  ;college degree
-    if education-level = 3 [set education 7 + random 2] ;Bachelor degree or from college to bachelor
-    if education-level = 4 [set education 9 + random 2] ;Master or PHD degree 
-  ]
-
-  ;preschoolers
-  ask people with [education = 0 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 0) [set edu-year 1]
-    if (age = 1) [set edu-year 2]
-    if (age = 2) [set edu-year 3]
-  ]
-  
-  ;kindergarten
-  ask people with [education = 1 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 3) [set edu-year 1]
-    if (age = 4) [set edu-year 2]
-    if (age = 5) [set edu-year 3]
-  ]
-  
-  ;primary school
-  ask people with [education = 2 and status = 1]
-  [
-    set edu-year-required 6
-    if (age = 6) [set edu-year 1]
-    if (age = 7) [set edu-year 2]
-    if (age = 8) [set edu-year 3]
-    if (age = 9) [set edu-year 4]
-    if (age = 10) [set edu-year 5]
-    if (age = 11) [set edu-year 6]
-  ] 
-  
-  ;middle school
-  ask people with [education = 3 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 12) [set edu-year 1]
-    if (age = 13) [set edu-year 2]
-    if (age = 14) [set edu-year 3]
-  ]
-  
-  ;polytechnic school or high school
-  ask people with [(education = 4 or education = 5) and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 15) [set edu-year 1]
-    if (age = 16) [set edu-year 2]
-    if (age = 17) [set edu-year 3]
-  ]
-  
-  ;college
-  ask people with [education = 6 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 18) [set edu-year 1]
-    if (age = 19) [set edu-year 2]
-    if (age = 20) [set edu-year 3]
-  ]
-  
-  ;bachelor degree
-  ask people with [education = 7 and status = 1]
-  [
-    set edu-year-required 4
-    if (age = 18) [set edu-year 1]
-    if (age = 19) [set edu-year 2]
-    if (age = 20) [set edu-year 3]
-    if (age = 21) [set edu-year 4]
-  ]
-  
-  ;from college to bachelor degree
-  ask people with [education = 8 and status = 1]
-  [
-    set edu-year-required 2
-    if (age = 21) [set edu-year 1]
-    if (age = 22) [set edu-year 2]
-  ]
-  
-  ;master degree
-  ask people with [education = 9 and status = 1]
-  [
-    set edu-year-required 3
-    if (age <= 22) [set edu-year 1]
-    if (age = 23) [let p random 1 ifelse (p = 0) [set edu-year 1] [set edu-year 2]]
-    if (age >= 24) [let p random 3 set edu-year (p + 1)]
-  ]
-  
-  ;PHD
-  ask people with [education = 10 and status = 1]
-  [
-    set edu-year-required 4
-    if (age <= 25)[set edu-year 1]
-    if (age = 26) [let p random 1 ifelse (p = 0) [set edu-year 1] [set edu-year 2]]
-    if (age = 27) [let p random 3 set edu-year (p + 1)]
-    if (Age = 28) [let p random 4 set edu-year (p + 1)]
-  ]
-end
-
-
 to find-hhder
-    ;this function is used to find a person to represent the household. People over 18 years old will be selected preferentially
+    ;找到每一户的户主
     let i 1
     let num-hhd max [hhd] of people
     while [i <= num-hhd]
@@ -343,79 +219,85 @@ to find-hhder
 end
 
 to initialize-relationship
-   ;Determine the relationship between each family member and the householder
+   ;确认每个人与户主的关系
   let i min [who] of people
   let num-person max [who] of people
   let num-hhd max [hhd] of people
-  while [i < num-person]
+  while [i <= num-person]
   [
     ask person i [
       if (relationship = 0)
       [
         let hhd1 hhd
         let hhder1 one-of people with [relationship = 1 and hhd = hhd1]
-        let age1 [age] of hhder1 ;record age of householer
-        let gender1 [gender] of hhder1 ;record gender of householer
+        let age1 [age] of hhder1 ;户主的年龄
+        let gender1 [gender] of hhder1 ;户主的性别
       
-        ;spouse of householder
-        if (gender1 = 0 and age1 >= 20) or (gender1 = 1 and age1 >= 22) 
+        ;判断是否为配偶：（1）年龄差不大于20岁；（2）性别不同；（3）户主无配偶
+        if (gender1 = 0 and age1 >= 20) or (gender1 = 1 and age1 >= 22)  ;如果户主在适婚的年纪
         [
           if relationship = 0 and age - age1 <= 20 and age1 - age <= 20 and gender != gender1 and count people with [hhd = hhd1 and relationship = 2] = 0 and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20))
           [set relationship 2]
         ]
       
-        ;Son, daughter, Son-in-law, and daughter-in-law
+        ;判断是否为儿子/女儿 或 儿媳/女婿：年龄差在21~44岁之间
         if (relationship = 0 and age1 - age <= 44 and age1 - age >= 21)
         [
-          if (gender = 1 and age < 22) [set relationship 3];son
-          if (gender = 0 and age < 20) [set relationship 3];daughter 
+          if (gender = 1 and age < 22) [set relationship 3] ;未达到适婚年龄的男性，为儿子
+          if (gender = 0 and age < 20) [set relationship 3] ;未达到适婚年龄的女性，为女儿
         
-          if (gender = 1 and age >= 22)
+          if (gender = 1 and age >= 22) ;如果我是男性，且年龄大于22岁
           [
+            ;判断户主是否有适婚的女儿
             ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 0 and age >= 20] > count people with [relationship = 13 and hhd = hhd1 and gender = 1])
-            [set relationship 13] ;daughter-in-law
-            [set relationship 3] ;daughter
+            [set relationship 13]
+            [set relationship 3]
           ]
         
           if (gender = 0 and age >= 20)
           [
+            ;判断户主是否有适婚的儿子
             ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 1 and age >= 22] < count people with [gender = 0 and relationship = 13 and hhd = hhd1])
-            [set relationship 13];son-in-law
-            [set relationship 3] ;son
+            [set relationship 13]
+            [set relationship 3]
           ]    
         ]
       
-        ;Grandchildren and grandchildren
+        ;判断是否为孙子、孙女：年龄差大于45岁
         if (relationship = 0 and age1 - age >= 45) [set relationship 6]
       
-        ;parents
+        ;判断是否为父母：（1）年龄差在21~44岁之间 （2）暂无person的关系为户主的父母
         if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 0)
         [set relationship 4]
       
-        ;Spouse's parents
+        ;判断是否为配偶的父母：（1）年龄在21~44岁之间；（2）有配偶；（3）暂无person的关系为户主的配偶的父母
         if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 5 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
         [set relationship 5]
       
-        ;grandparents
+        ;判断是否为户主的爷爷奶奶：（1）年龄差大于45岁；（2）暂无person的关系为户主的爷爷奶奶
         if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 0)
         [set relationship 7]
+      
+        ;判断是否为户主的外公外婆：（1）年龄差大于45岁；（2）已有爷爷奶奶；（3）暂无person的关系为户主的外公外婆
         if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 0)
         [set relationship 8]
       
-        ;spouse's grandparents
+        ;判断是否为户主配偶的爷爷奶奶：（1）年龄差大于45岁；（2）已有户主的爷爷奶奶外公外婆角色；（3）暂无person的关系为户主配偶的爷爷奶奶 （4）有配偶
         if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
         [set relationship 9]
+      
+        ;判断是否为户主配偶的外公外婆：（2）年龄差大于45岁；（2）已有户主的爷爷奶奶外公外婆、户主的配偶的爷爷奶奶角色；（3）暂无person的关系为户主配偶的外公外婆的角色；（4）有配偶
         if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 1 and count people with [hhd = hhd1 and relationship = 2] = 1 and count people with [gender = [gender] of myself and hhd = hhd1 and relationship = 10] = 0)
         [set relationship 10]
       
-        ;sibling
+        ;判断是否为户主的兄弟姐妹 ：（1）与户主年龄差在20岁以内
         if (relationship = 0)
        [
          if (abs (age - age1) <= 20)
           [set relationship  11]
        ]
       
-        ;other relationship
+        ;其他关系
         if (relationship = 0) [set relationship 12]
       ]
     
@@ -424,113 +306,117 @@ to initialize-relationship
   set i i + 1
   ]
   
-  ;create links (couple, parent, grandparent)
+  ;创建连线
   let j min [who] of people
   set num-person max [who] of people
   while [j < num-person]
   [
     ask person j 
     [
-      if (relationship = 1) ;linking householder with other family members
+      if (relationship = 1) ;户主本人
       [
-        ;couple link
+        ;妻子丈夫
         let hw one-of other people with [not link-neighbor? myself and relationship = 2 and hhd = [hhd] of myself]
         if hw != nobody [create-couple-with hw]
         
-        ;parent link
+        ;父母
         let fm other people with [not link-neighbor? myself and relationship = 4 and hhd = [hhd] of myself]
         if (fm != nobody) [create-parents-with fm]
         
-        ;parent link
+        ;儿女
         let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
         if (sd != nobody) [create-parents-with sd]
         
-        ;grandparent link
+        ;孙子孙女
         let gsd other people with [not link-neighbor? myself and relationship = 6 and hhd = [hhd] of myself]
         if (gsd != nobody) [create-grapas-with gsd]
         
-        ;grandparent link
+        ;爷爷奶奶外公外婆
         let gp other people with [not link-neighbor? myself and (relationship = 7 or relationship = 8) and hhd = [hhd] of myself]
         if (gp != nobody) [create-grapas-with gp]
       ]
         
-      if (relationship = 2) ;linking spouse with other family members
+      if (relationship = 2) ;户主的配偶
       [
-        ;parent link
+        ;儿女
         let children other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
         if (children != nobody) [create-parents-with children]
         
-        ;parent link
+        ;父母
         let fm other people with [not link-neighbor? myself and relationship = 5 and hhd = [hhd] of myself]
         if (fm != nobody) [create-parents-with fm]
         
-        ;grandparent link
+        ;爷爷奶奶外公外婆
         let gp other people with [not link-neighbor? myself and (relationship = 9 or relationship = 10) and hhd = [hhd] of myself]
         if (gp != nobody) [create-grapas-with gp]
         
-        ;grandparent link
+        ;孙子孙女
         let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
         if (sd != nobody) [create-parents-with sd]
       ]
       
       if (relationship = 3 and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20))) ;户主的儿女
       [
-        ;couple link
+        ;妻子丈夫
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 13 and gender != [gender] of myself]
         if hw != nobody [create-couple-with hw]
       ]
       
-      if (relationship = 4) ;link householder's parent with other members
+      if (relationship = 4) ;户主的父母
       [
-        ;couple link
+        ;妻子或丈夫
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
         if hw != nobody [create-couple-with hw]
         
-        ;parent link
+        ;儿女
         let children other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 1 or relationship = 11)]
         if (Children != nobody) [create-parents-with children]
         
-        ;parent link
+        ;父母
         ifelse (gender = 1) 
         [
+          ;该agent为户主的父亲，则与户主的爷爷奶奶连线
           let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
           if (fm != nobody) [create-parents-with fm]
         ]
         [
+          ;该agent为户主的母亲，与户主的外公外婆连线
           let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
           if (fm != nobody) [create-parents-with fm]
         ]
         
-        ;grandparent link
+        ;孙子孙女
         let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
         if (gsd != nobody) [create-grapas-with gsd]
       ]
       
-      if (relationship = 5) ;linking spouse's parents with other members
+      if (relationship = 5) ;户主配偶的父母
       [
-        ;couple link
+        ;妻子丈夫
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
         if hw != nobody [create-couple-with hw]
         
-        ;parent link
+        ;父母
         ifelse (gender = 1)
         [
+          ;该agent为户主配偶的父亲，则与户主配偶的爷爷奶奶连线
           let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
           if (fm != nobody) [create-parents-with fm]
         ]
         [
+          ;该agent为户主配偶的母亲，与户主配偶的外公外婆连线
           let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 108]
           if (fm != nobody) [create-parents-with fm]
         ]
         
-        ;grandparent link
+        ;外孙子孙女
         let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
         if (gsd != nobody) [create-grapas-with gsd]
       ]
     
-      if (relationship = 6) ;linking grandsons with other members
+      if (relationship = 6) ;户主的孙子/孙女
       [
-        ;couple link
+        ;父母
         let fm1 one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20)) and relationship = 3]
         if (fm1 != nobody)
         [
@@ -540,37 +426,37 @@ to initialize-relationship
         ]
       ]
       
-      if (relationship = 7) ;linking grandparents with other members
+      if (relationship = 7) ;户主的爷爷奶奶
       [
-        ;couple link
+        ;丈夫妻子
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
         if hw != nobody [create-couple-with hw]
       ]
       
-      if (relationship = 8) ;linking grandparents with other members
+      if (relationship = 8) ;户主的外公外婆
       [
-        ;couple link
+        ;丈夫妻子
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
         if hw != nobody [create-couple-with hw]
       ]
       
-      if (relationship = 9) ;linking grandparents of spouse with other members
+      if (relationship = 9) ;户主配偶的爷爷奶奶
       [
-        ;couple link
+        ;丈夫妻子
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
         if hw != nobody [create-couple-with hw]
       ]
       
-      if (relationship = 10) ;linking grandparents of spouse with other members
+      if (relationship = 10) ;户主配偶的外公外婆
       [
-        ;couple link
+        ;丈夫妻子
         let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 10]
         if hw != nobody [create-couple-with hw]
       ]
       
-      if (Relationship = 11) ;linking sibling with other members
+      if (Relationship = 11) ;户主的兄弟姐妹
       [
-        ;grandparents link
+        ;爷爷奶奶外公外婆
         let gp other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 7 or relationship = 8)]
         if gp != nobody [create-grapas-with gp]
       ]
@@ -581,53 +467,297 @@ to initialize-relationship
   ask links [hide-link]
 end
 
-
+to initialize-relationship1 [householdid]
+  ;初始化某个家庭的关系
+  ask people with [hhd = householdid][set relationship 0]
+  
+  ;找到户主
+  ifelse (count people with [hhd = householdid and age >= 18] > 0)
+  [ask one-of people with [hhd = householdid and age >= 18] [set relationship 1]]
+  [ask one-of people with [hhd = householdid] [set relationship 1]]
+  
+  ;初始化其他人与户主的关系
+  let i count people with [hhd = householdid]
+  while [i > 0]
+  [
+    set i i - 1
+    ask one-of people with [relationship = 0 and hhd = householdid]
+    [
+      let hhd1 hhd
+      let hhder1 one-of people with [relationship = 1 and hhd = hhd1]
+      let age1 [age] of hhder1 ;户主的年龄
+      let gender1 [gender] of hhder1 ;户主的性别
+      
+      ;配偶
+      if (gender1 = 0 and age1 >= 20) or (gender1 = 1 and age1 >= 22)
+      [
+        if (relationship = 0 and age - age1 <= 20 and age1 - age <= 20 and gender != gender1 and count people with [hhd = hhd1 and relationship = 2] = 0 and (gender = 1 and age >= 22) or (gender = 0 and age >= 20))
+        [set relationship 2]
+      ]
+      
+      ;判断是否为儿子/女儿 或 儿媳/女婿：年龄差在21~44岁之间
+        if (relationship = 0 and age1 - age <= 44 and age1 - age >= 21) 
+        [
+          if (gender = 1 and age < 22) [set relationship 3] ;未达到适婚年龄的男性，为儿子
+          if (gender = 0 and age < 20) [set relationship 3] ;未达到适婚年龄的女性，为女儿
+        
+          if (gender = 1 and age >= 22) ;如果我是男性，且年龄大于22岁
+          [
+            ;判断户主是否有适婚的女儿
+            ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 0 and age >= 20] > count people with [relationship = 13 and hhd = hhd1 and gender = 1])
+            [set relationship 13]
+            [set relationship 3]
+          ]
+        
+          if (gender = 0 and age >= 20)
+          [
+            ;判断户主是否有适婚的儿子
+            ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 1 and age >= 22] < count people with [gender = 0 and relationship = 13 and hhd = hhd1])
+            [set relationship 13]
+            [set relationship 3]
+          ]    
+        ]
+      
+        ;判断是否为孙子、孙女：年龄差大于45岁
+        if (relationship = 0 and age1 - age >= 45) [set relationship 6]
+      
+        ;判断是否为父母：（1）年龄差在21~44岁之间 （2）暂无person的关系为户主的父母
+        if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 0)
+        [set relationship 4]
+      
+        ;判断是否为配偶的父母：（1）年龄在21~44岁之间；（2）有配偶；（3）暂无person的关系为户主的配偶的父母
+        if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 5 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
+        [set relationship 5]
+      
+        ;判断是否为户主的爷爷奶奶：（1）年龄差大于45岁；（2）暂无person的关系为户主的爷爷奶奶
+        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 0)
+        [set relationship 7]
+      
+        ;判断是否为户主的外公外婆：（1）年龄差大于45岁；（2）已有爷爷奶奶；（3）暂无person的关系为户主的外公外婆
+        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 0)
+        [set relationship 8]
+      
+        ;判断是否为户主配偶的爷爷奶奶：（1）年龄差大于45岁；（2）已有户主的爷爷奶奶外公外婆角色；（3）暂无person的关系为户主配偶的爷爷奶奶 （4）有配偶
+        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
+        [set relationship 9]
+      
+        ;判断是否为户主配偶的外公外婆：（2）年龄差大于45岁；（2）已有户主的爷爷奶奶外公外婆、户主的配偶的爷爷奶奶角色；（3）暂无person的关系为户主配偶的外公外婆的角色；（4）有配偶
+        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 1 and count people with [hhd = hhd1 and relationship = 2] = 1 and count people with [gender = [gender] of myself and hhd = hhd1 and relationship = 10] = 0)
+        [set relationship 10]
+      
+        ;判断是否为户主的兄弟姐妹 ：（1）与户主年龄差在20岁以内
+        if (relationship = 0)
+       [
+         if (abs (age - age1) <= 20)
+          [set relationship  11]
+       ]
+      
+        ;其他关系
+        if (relationship = 0) [set relationship 12]
+    ]
+  ]
+  
+  ;初始化连线
+  let max-who max [who] of people with [hhd = householdid]
+  let min-who min [who] of people with [hhd = householdid]
+  let j min-who
+  while [j <= max-who]
+  [
+    ask person j
+    [
+      if (relationship = 1) ;户主本人
+      [
+        ;妻子丈夫
+        let hw one-of other people with [not link-neighbor? myself and relationship = 2 and hhd = [hhd] of myself]
+        if hw != nobody [create-couple-with hw]
+        
+        ;父母
+        let fm other people with [not link-neighbor? myself and relationship = 4 and hhd = [hhd] of myself]
+        if (fm != nobody) [create-parents-with fm]
+        
+        ;儿女
+        let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (sd != nobody) [create-parents-with sd]
+        
+        ;孙子孙女
+        let gsd other people with [not link-neighbor? myself and relationship = 6 and hhd = [hhd] of myself]
+        if (gsd != nobody) [create-grapas-with gsd]
+        
+        ;爷爷奶奶外公外婆
+        let gp other people with [not link-neighbor? myself and (relationship = 7 or relationship = 8) and hhd = [hhd] of myself]
+        if (gp != nobody) [create-grapas-with gp]
+      ]
+        
+      if (relationship = 2) ;户主的配偶
+      [
+        ;儿女
+        let children other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (children != nobody) [create-parents-with children]
+        
+        ;父母
+        let fm other people with [not link-neighbor? myself and relationship = 5 and hhd = [hhd] of myself]
+        if (fm != nobody) [create-parents-with fm]
+        
+        ;爷爷奶奶外公外婆
+        let gp other people with [not link-neighbor? myself and (relationship = 9 or relationship = 10) and hhd = [hhd] of myself]
+        if (gp != nobody) [create-grapas-with gp]
+        
+        ;孙子孙女
+        let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (sd != nobody) [create-parents-with sd]
+      ]
+      
+      if (relationship = 3 and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20))) ;户主的儿女
+      [
+        ;妻子丈夫
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 13 and gender != [gender] of myself]
+        if hw != nobody [create-couple-with hw]
+      ]
+      
+      if (relationship = 4) ;户主的父母
+      [
+        ;妻子或丈夫
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
+        if hw != nobody [create-couple-with hw]
+        
+        ;儿女
+        let children other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 1 or relationship = 11)]
+        if (Children != nobody) [create-parents-with children]
+        
+        ;父母
+        ifelse (gender = 1) 
+        [
+          ;该agent为户主的父亲，则与户主的爷爷奶奶连线
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        [
+          ;该agent为户主的母亲，与户主的外公外婆连线
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        
+        ;孙子孙女
+        let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
+        if (gsd != nobody) [create-grapas-with gsd]
+      ]
+      
+      if (relationship = 5) ;户主配偶的父母
+      [
+        ;妻子丈夫
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
+        if hw != nobody [create-couple-with hw]
+        
+        ;父母
+        ifelse (gender = 1)
+        [
+          ;该agent为户主配偶的父亲，则与户主配偶的爷爷奶奶连线
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        [
+          ;该agent为户主配偶的母亲，与户主配偶的外公外婆连线
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 108]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        
+        ;外孙子孙女
+        let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
+        if (gsd != nobody) [create-grapas-with gsd]
+      ]
+    
+      if (relationship = 6) ;户主的孙子/孙女
+      [
+        ;父母
+        let fm1 one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20)) and relationship = 3]
+        if (fm1 != nobody)
+        [
+          create-parent-with fm1
+          let fm2 one-of other people with [couple-neighbor? fm1]
+          if (fm2 != nobody) [create-parent-with fm2]
+        ]
+      ]
+      
+      if (relationship = 7) ;户主的爷爷奶奶
+      [
+        ;丈夫妻子
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
+        if hw != nobody [create-couple-with hw]
+      ]
+      
+      if (relationship = 8) ;户主的外公外婆
+      [
+        ;丈夫妻子
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
+        if hw != nobody [create-couple-with hw]
+      ]
+      
+      if (relationship = 9) ;户主配偶的爷爷奶奶
+      [
+        ;丈夫妻子
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
+        if hw != nobody [create-couple-with hw]
+      ]
+      
+      if (relationship = 10) ;户主配偶的外公外婆
+      [
+        ;丈夫妻子
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 10]
+        if hw != nobody [create-couple-with hw]
+      ]
+      
+      if (Relationship = 11) ;户主的兄弟姐妹
+      [
+        ;爷爷奶奶外公外婆
+        let gp other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 7 or relationship = 8)]
+        if gp != nobody [create-grapas-with gp]
+      ]
+    ]
+    set j j + 1
+  ]
+end
 
 to initialize-residence
-  ;this function is used to allocate a residential location for households, for each household, there are three steps to allocate a residential building to it
-  ;Step 1: check if there any residence the household can purchase it, according to parameter Tpurchase. If yes, the household will purchase the residence, otherwise, it will go to step 2
-  ;Step 2: check if there any residence can rent it, according to parameter Tpurchase. If yes, the household will rent the residence, otherwise, it will go to step 3
-  ;step 3: rent the cheapeast residence
-  set Trent 0.3 ;the parameter determines residences that affordable to rent. Specifically, if the rent of a residence <= average income of a household * Trent, the residence is affordable to rent for the household
-  set Tpurchase 0.05 ;the parameter determines residences that affordable to purchase. Specifically, if the selling price of a residence <= average income of a household * Tpurchase, the residence is affordable to purchase for the household
-  
+  set Trent 0.3
+  set Tpurchase 0.05
+  ;为家庭分配住址
   while [count people with [relationship = 1 and livelong = 0 and livelat = 0] > 0]
   [
-    ask max-one-of people with [relationship = 1 and livelong = 0 and livelat = 0] [number] ;Priority should be given to housing allocation for families with a larger population, which can to some extent avoid the inability of the last few families to find suitable housing (as the capacity of the housing is smaller than their family size)
+    ask max-one-of people with [relationship = 1 and livelong = 0 and livelat = 0] [number]
     [
-      let afford1 one-of residences with [capacity > [number] of myself and (purchasing * [number] of myself) * Tpurchase <= [hhd-income] of myself] ;record those residences which are affordable to purchase
+      let afford1 one-of residences with [capacity > [number] of myself and (purchasing * [number] of myself) * Tpurchase <= [hhd-income] of myself]
       ifelse afford1 != nobody 
+      ;能够买得起房子
       [
         create-purchase-with afford1
         set livelong [long] of afford1
         set livelat [lat] of afford1
         move-to afford1
-        ask people with [hhd = [hhd] of myself] [set livelong [long] of afford1 set livelat [lat] of afford1 move-to afford1 set residence-cost [purchasing] of afford1 set residence-size number]
+        ask people with [hhd = [hhd] of myself] [set livelong [long] of afford1 set livelat [lat] of afford1 move-to afford1 set residence-cost [purchasing] of afford1 set residence-size number] ;让家人搬到房子里
         ask afford1 [set capacity capacity - [number] of myself]
       ]
-      
-      ;If no suitable house is found to purchase during the above process, the household will consider renting a residence
+      ;买不起房子，租房
       [
         
-        let afford2 one-of residences with [capacity > [number] of myself and (purchasing * [number] of myself) * Trent <= [hhd-income] of myself];record those residences which are affordable to rent
+        let afford2 one-of residences with [capacity > [number] of myself and (rrent * [number] of myself) * Trent <= [hhd-income] of myself]
         ifelse afford2 != nobody
-        [
+        [;选择一个租得起的房子租赁
           create-rent-with afford2
           set livelong [long] of afford2
           set livelat [lat] of afford2
           move-to afford2
-          ask people with [hhd = [hhd] of myself] [set livelong [long] of afford2 set livelat [lat] of afford2 move-to afford2  set residence-cost [Rrent] of afford2 set residence-size number]
+          ask people with [hhd = [hhd] of myself] [set livelong [long] of afford2 set livelat [lat] of afford2 move-to afford2  set residence-cost [Rrent] of afford2 set residence-size number] ;让家人搬到房子里
           ask afford2 [set capacity capacity - [number] of myself]
         ]
         
-        ;If no suitable house is found during the above process, the household will rent the cheapest house on the market.
-        [
+        
+        [;选择最便宜的房子租赁
           let afford3 min-one-of residences with [capacity > [number] of myself] [Rrent]
           create-rent-with afford3
           set livelong [long] of afford3
           set livelat [lat] of afford3
           move-to afford3
-          ask people with [hhd = [hhd] of myself] [set livelong [long] of afford3 set livelat [lat] of afford3 move-to afford3  set residence-cost [purchasing] of afford3 set residence-size number]
+          ask people with [hhd = [hhd] of myself] [set livelong [long] of afford3 set livelat [lat] of afford3 move-to afford3  set residence-cost [purchasing] of afford3 set residence-size number] ;让家人搬到房子里
           ask afford3 [set capacity capacity - [number] of myself]
         ]
       ]
@@ -636,171 +766,120 @@ to initialize-residence
 end
 
 to initialize-work-study-location
-  ;this fuction is used to assign work or study place
+  ;initialize edu-year
+  ;education 0,学龄前儿童 1-幼儿园 2-小学 3-初中 4-中专 5-高中 6-大学专科 7-大学本科 8-专升本 9-硕士研究生 10-博士研究生
   
-  ;study place
-  ;(1)Considering the concept of school districts, kindergarten, elementary, and junior high school students will be given priority allocation to schools within 2km of home, and these schools have size restrictions (i.e. the number of admissions will not exceed their capacity)
-  ;(2)high school, college, and university: the probability of each student attending the school is based on school's capacity
-  
-  
-  ;Calculate the probability of each student attending the school based on school's capacity (only for high school, college, and university)
-  let school4 [] ;list of school with category = 4
-  let prob4 [];weights
-  ask schools with [category = 4][set school4 lput who school4 set prob4 lput capacity prob4]
-  py:set "school4" school4
-  py:set "prob4" prob4
-  let school5 [] ;list of school with category = 5
-  let prob5 [];weights
-  ask schools with [category = 5][set school5 lput who school5 set prob5 lput capacity prob5]
-  py:set "school5" school5
-  py:set "prob5" prob5
-  let school6 [] ;list of school with category = 4
-  let prob6 [];weights
-  ask schools with [category = 6][set school6 lput who school6 set prob6 lput capacity prob6]
-  py:set "school6" school6
-  py:set "prob6" prob6
-  let school7 [] ;list of school with category = 7
-  let prob7 [];weights
-  ask schools with [category = 7][set school7 lput who school7 set prob7 lput capacity prob7]
-  py:set "school7" school7
-  py:set "prob7" prob7
-  
-  
-  ask people with [status = 1 and education >= 1 and wslong = 0 and wslat = 0]
+  ;学龄前
+  ask people with [education = 0 and status = 1]
   [
-    (ifelse
-      education = 1 ;find a kindergarten to study
-      [
-        ifelse (count schools with [category = 1 and count in-student-neighbors < capacity] in-radius 5 > 0)
-        [
-          let candidate one-of schools with [category = 1 and count in-student-neighbors < capacity] in-radius 5 ;Randomly select a kindergarten within a 2km range
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ] 
-        [
-          let candidate min-one-of (schools with [category = 1 and count in-student-neighbors < capacity])[distance myself];Choose the nearest kindergarten
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ]
-      ]
-      
-      education = 2
-      [
-        ifelse (count schools with [category = 2 and count in-student-neighbors < capacity] in-radius 5 > 0)
-        [
-          let candidate one-of schools with [category = 2 and count in-student-neighbors < capacity] in-radius 5 ;;Randomly select a primary school within a 2km range
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ] 
-        [
-          let candidate min-one-of (schools with [category = 2 and count in-student-neighbors < capacity])[distance myself];Choose the nearest primary school
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ]
-      ]
-      
-      education = 3
-      [
-        ifelse (count schools with [category = 3 and count in-student-neighbors < capacity] in-radius 5 > 0)
-        [
-          let candidate one-of schools with [category = 3] in-radius 5 ;Randomly select a middle school within a 2km range
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ] 
-        [
-          let candidate min-one-of (schools with [category = 3 and count in-student-neighbors < capacity])[distance myself];Choose the nearest middle school
-          create-student-with candidate
-          set wslong [long] of candidate
-          set wslat [lat] of candidate
-        ]
-      ]
-      
-      education = 4 ;select one college
-      [
-        (py:run
-            "result = random.choices (school5, prob5)"
-          )
-        let candidate turtle item 0 py:runresult "result"
-        create-student-with candidate
-        set wslong [long] of candidate
-        set wslat [lat] of candidate
-      ]
-      
-      education = 5 ;select one high school
-      [
-        (py:run
-            "result = random.choices (school4, prob4)"
-          )
-        let candidate turtle item 0 py:runresult "result"
-        create-student-with candidate
-        set wslong [long] of candidate
-        set wslat [lat] of candidate
-      ]
-      
-      
-      education = 6 ;select one college
-      [
-        (py:run
-            "result = random.choices (school5, prob5)"
-          )
-        let candidate turtle item 0 py:runresult "result"
-        
-        create-student-with candidate
-        set wslong [long] of candidate
-        set wslat [lat] of candidate
-      ]
-      
-      ;education = 7, 8, 9, 10, select one university
-      [        
-        (py:run
-            "result = random.choices (school6, prob6)"
-          )
-        let candidate turtle item 0 py:runresult "result"
-        create-student-with candidate
-        set wslong [long] of candidate
-        set wslat [lat] of candidate
-      ])
-    ]
-  
-  
-  ;assign work place
-  ;The number of employees that can be assigned to each firm=(total labor force - unemployed - people working in schools - people working in stores) * the capacity of the firm/the sum of the capacities of all firms
-  let staff-firm count people with [status = 2] - sum [staff] of schools - sum [staff] of shops
-  ask firms[set staff round (staff-firm * capacity / sum [capacity] of firms)] ;calculate how many staff the firm will have
-  
-  ;Ensure the number of staffs in firms equals to "staff-firm"
-  if sum [staff] of firms > staff-firm [ask n-of (sum [staff] of firms - staff-firm) firms with [staff > 1] [set staff staff - 1]]
-  if sum [staff] of firms < staff-firm [ask n-of (staff-firm - sum [staff] of firms) firms [set staff staff + 1]]
- 
-  
-  ;randomly assign work place to labors (distance-max will be used as a constrain)
-  ask people with [status = 2 and count in-employee-neighbors = 0]
+    set edu-year-required 3
+    if (age = 0) [set edu-year 1]
+    if (age = 1) [set edu-year 2]
+    if (age = 2) [set edu-year 3]
+  ]
+
+  ;幼儿园
+  ask people with [education = 1 and status = 1]
   [
-    let candidate one-of schools with [count in-employee-neighbors < staff] in-radius distance-max
-    if candidate = nobody [set candidate one-of shops with [count in-employee-neighbors < staff] in-radius distance-max]
-    if candidate = nobody [set candidate one-of firms with [count in-employee-neighbors < staff] in-radius distance-max]
-    if candidate = nobody [set candidate one-of schools with [count in-employee-neighbors < staff]]
-    if candidate = nobody [set candidate one-of shops with [count in-employee-neighbors < staff]]
-    if candidate = nobody [set candidate one-of firms with [count in-employee-neighbors < staff]]
-    create-employee-with candidate
-    set wslong [long] of candidate
-    set wslat [lat] of candidate
+    set edu-year-required 3
+    if (age = 3) [set edu-year 1]
+    if (age = 4) [set edu-year 2]
+    if (age = 5) [set edu-year 3]
+  ]
+
+  ;小学
+  ask people with [education = 2 and status = 1]
+  [
+    set edu-year-required 6
+    if (age = 6) [set edu-year 1]
+    if (age = 7) [set edu-year 2]
+    if (age = 8) [set edu-year 3]
+    if (age = 9) [set edu-year 4]
+    if (age = 10) [set edu-year 5]
+    if (age = 11) [set edu-year 6]
+  ] 
+
+  ;初中
+  ask people with [education = 3 and status = 1]
+  [
+    set edu-year-required 3
+    if (age = 12) [set edu-year 1]
+    if (age = 13) [set edu-year 2]
+    if (age = 14) [set edu-year 3]
+  ]
+
+  ;中专
+  ask people with [education = 4 and status = 1]
+  [
+    set edu-year-required 3
+    if (age = 15) [set edu-year 1]
+    if (age = 16) [set edu-year 2]
+    if (age = 17) [set edu-year 3]
+  ]
+
+  ;高中
+  ask people with [education = 5 and status = 1]
+  [
+    set edu-year-required 3
+    if (age = 15) [set edu-year 1]
+    if (age = 16) [set edu-year 2]
+    if (age = 17) [set edu-year 3]
+  ]
+
+  ;大学专科
+  ask people with [education = 6 and status = 1]
+  [
+    set edu-year-required 3
+    if (age = 18) [set edu-year 1]
+    if (age = 19) [set edu-year 2]
+    if (age = 20) [set edu-year 3]
   ]
   
-  ;calculate firm's accessibility and agglomeration
+  ;大学本科
+  ask people with [education = 7 and status = 1]
+  [
+    set edu-year-required 4
+    if (age = 18) [set edu-year 1]
+    if (age = 19) [set edu-year 2]
+    if (age = 20) [set edu-year 3]
+    if (age = 21) [set edu-year 4]
+  ]
+  
+  ;专升本
+  ask people with [education = 8 and status = 1]
+  [
+    set edu-year-required 2
+    if (age = 21) [set edu-year 1]
+    if (age = 22) [set edu-year 2]
+  ]
+  
+  ;硕士研究生
+  ask people with [education = 9 and status = 1]
+  [
+    set edu-year-required 3
+    if (age = 22) [set edu-year 1]
+    if (age = 23) [set edu-year 2]
+    if (age = 24) [set edu-year 3]
+  ]
+  
+  ;博士研究生
+  ask people with [education = 10 and status = 1]
+  [
+    set edu-year-required 4
+    if (age = 25) [set edu-year 1]
+    if (age = 26) [set edu-year 2]
+    if (age = 27) [set edu-year 3]
+    if (age = 28) [set edu-year 4]
+  ]
+  ;firms计算acc和agg
   ask firms
   [
     if count in-employee-neighbors = 0 [die]
-    ;update agglomeration
+    ;更新agglomeration
     set agg sum [count in-employee-neighbors] of other firms in-radius 2.5
-    if agg = 0 [set agg 1] ;To avoid dividing by zero in the subsequent calculation of firm's capacity
+    if agg = 0 [set agg 1] ;在测试case中大多数firms的agg = 0，无法进行后续的计算，故赋值1
     
-    ;calculate accesssibility of fimrs
+    ;更新accessibility 由于暂时无法计算出每个员工的通勤时间，故用直线距离计算accessibility
     ask in-employee-neighbors [set current-ws-dis distance myself]
     set acc sum [current-ws-dis] of in-employee-neighbors / count in-employee-neighbors
   ]

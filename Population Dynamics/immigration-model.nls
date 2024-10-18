@@ -14,6 +14,9 @@ to immigration-model
     year = 2031 [set num-imm round (item 10 Nimm / 1000)]
     [set num-imm round (item 11 Nimm / 1000)]
   ) 
+  
+  file-open "immigration.csv"
+  file-print "PID,livelong,livelat,wslong,wslat"
   while [num-imm > 0]
   [
     let candidate one-of people ;任意选择一个家庭作，新迁入的家庭属性与该家庭一致
@@ -22,10 +25,13 @@ to immigration-model
     [
       hatch 1 
       [
+        set pid max [pid] of people + 1
         set hhd new-hhdid
         if status = 1 and age >= 3 [find-a-school] ;学生找学校
         if status = 2 [find-a-job] ;上班族找工作
+        if relationship = 1 [set residence-cost 0 set residence-size 0]
       ]
+      file-print (word who ", " livelong ", " livelat )
     ]
     let hhder one-of people with [hhd = new-hhdid and relationship = 1]
     ask hhder

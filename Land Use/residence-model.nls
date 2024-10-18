@@ -13,6 +13,7 @@ residences-own
   att-rent ;attractiveness to candidate renters
   surrounding-purchase ;purchasings of residential residences within N km
   surrounding-rent ;rents of residential residences within N km
+  district
 ]
 
 ;cpurchases are used to temporarily record 
@@ -21,11 +22,15 @@ cpurchases-own
   total-utility ;total utility
   accessibility ;utility of accessibility
   cost ;cost utility
+  acc-u
+  cost-u
 ]
 
 crents-own
 [
   total-utility
+  acc-u
+  cost-u
   accessibility
   cost
 ]
@@ -71,6 +76,7 @@ to residence-model
     ]
     
     set current-accessibility sum [current-ws-dis] of people with [hhd = [hhd] of myself]
+    if current-accessibility = 0 [set current-accessibility 1]
   ]
   
   ;Allocate cost and accessibility for these people do not have a living place yet (due to immigration, marriage, and divorce). In this case, average cost and accessibility are allocated.
@@ -80,14 +86,27 @@ to residence-model
     set current-accessibility mean [current-accessibility] of people with [relationship = 1 and (count in-rent-neighbors = 1 or count in-purchase-neighbors = 1)]
   ]
   
+  ask people [set move 0]
+  
+  ask people with [relationship = 1 and count in-rent-neighbors = 1 and mandatory = 1][set move 1]
+  ask people with [relationship = 1 and count in-rent-neighbors = 1 and mandatory = 0 and flexible >= T-flexible-rent][set move 1]
+  ask people with [relationship = 1 and count in-purchase-neighbors = 1 and mandatory = 1][set move 1]
+  ask people with [relationship = 1 and count in-purchase-neighbors = 1 and mandatory = 0 and flexible >= T-flexible-purchase][set move 1]
+  
   ;developing new residential buildings
   develop-new-residences
+  
+  let move-detail (word "Output Data/Annualoutput/move-detail" year ".csv")
+  file-open move-detail
+  file-print "HID,Long1,Lat1,Long2,Lat2,marriage,divorce,birth,death,work,education,immigration"
   
   ;simulate people purchase residential building
   purchasing-residence
   
   ;simute people rent residential building
   rent-residence
+  
+  file-close-all
   
   ;for those people who do not purchase or rent a proper residential building in the last procedures, they will rent a residential building with the lowest rent.
   mandatory-residence-renter
@@ -104,6 +123,8 @@ to residence-model
   ;Updating people's districts
   ask people [set district [pdistrict] of patch-here]
   
+  
+  
   print "residence-model finished"
 end
 
@@ -116,7 +137,7 @@ to purchasing-residence
     set i i + 1
     
     ;in each negotiation, if the number of candidates is below than the variable 'max-num-residences', people will seek for some new candidates
-    ask people with [relationship = 1 and (mandatory = 1 or flexible >= T-flexible) and count in-cpurchase-neighbors < max-num-residences]
+    ask people with [relationship = 1 and move = 1 and count in-cpurchase-neighbors < max-num-residences]
     [
       if count residences with [capacity >= [number] of myself and purchaser-income * T-purchase-afford <= ([hhd-income] of myself / [number] of myself)] > 0
       [
@@ -145,22 +166,43 @@ to purchasing-residence
                 ask wsplace [set distance1 distance candidate]
                 set candidate-ws-dis distance1
               ]
-              set candidate-ws-dis distance candidate
             ]
             set accessibility sum [candidate-ws-dis] of people with [hhd = hhd1] ;utility of accessibility
+            if accessibility = 0 [set accessibility 1]
             
             ;calcuate the utility
-            ifelse [current-accessibility] of purchaser > accessibility [set total-utility W-res-purchase-acc * ([current-accessibility] of purchaser - accessibility)][set total-utility W-res-purchase-acc * loss * ([current-accessibility] of purchaser - accessibility)]
-            ifelse [residence-cost] of purchaser > cost [set total-utility total-utility + W-res-rent-price * ([residence-cost] of purchaser - cost)] [set total-utility total-utility + W-res-purchase-price * loss * ([residence-cost] of purchaser - cost)]
+            ;accessibility
+            ;Calculate the difference between the accessibility of the current house and the accessibility of the candidate
+            ifelse accessibility > [current-accessibility] of purchaser [set acc-u (- (accessibility / [current-accessibility] of purchaser))][set acc-u [current-accessibility] of purchaser / accessibility]
+            ;cost utility
+            ifelse [count in-purchase-neighbors] of purchaser = 1
+            [
+              ifelse cost > [residence-cost] of purchaser [set cost-u ( - cost / [residence-cost] of purchaser)][set cost-u [residence-cost] of purchaser / cost]
+            ]
+            [
+              ;the purchaser is renting, therefore the model
+              ifelse cost > mean [purchasing] of residences * [number] of purchaser [set cost-u (- cost /  mean [purchasing] of residences * [number] of purchaser)][set cost-u mean [purchasing] of residences * [number] of purchaser / cost]
+            ]
           ]
         ]
       ]
     ]
+
+    ask cpurchases 
+    [
+      ifelse acc-u > 0 [set total-utility w-res-purchase-acc * acc-u][set total-utility w-res-purchase-acc * loss * acc-u]
+      ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-purchase-price][set total-utility (total-utility + loss * w-res-purchase-price * cost-u)]
+      if total-utility <= purchase-prospect [die]
+    ]
+    
+    print (word "mean utility:" mean [total-utility] of cpurchases)
+    print (word "mean cost:" mean [cost-u] of cpurchases)
+    print (word "mean accessibility:" mean [acc-u] of cpurchases)
       
     ;residential building update purchasing
     ask residences [set att-purchase 0]
-    let T-rise-purchase 100 ;This determine a threshold of rising the purchasing, which means if a residential building's 'att-purchase' is greater than 100, its purchasing will rise
-    let T-decrease-purchase -200 ;This determine a threshold of decreasing the purchasing, which means if a residential building's 'att-purchase' is below -200, its purchasing will rise
+    let T-rise-purchase 0.01 ;This determine a threshold of rising the purchasing, which means if a residential building's 'att-purchase' is greater than 100, its purchasing will rise
+    let T-decrease-purchase 0.005 ;This determine a threshold of decreasing the purchasing, which means if a residential building's 'att-purchase' is below -200, its purchasing will rise
 
     ask residences with [capacity > 0][set att-purchase sum [total-utility] of my-cpurchases / capacity]
     
@@ -188,9 +230,17 @@ to purchasing-residence
         [
           let purchaser other-end
           set cost [purchasing] of myself * [number] of purchaser
+          ifelse [count in-purchase-neighbors] of purchaser = 1
+          [
+            ifelse cost > [residence-cost] of purchaser [set cost-u ( - cost / [residence-cost] of purchaser)][set cost-u [residence-cost] of purchaser / cost]
+          ]
+          [
+            ;the purchaser is renting, therefore the model
+            ifelse cost > mean [purchasing] of residences * [number] of purchaser [set cost-u (- cost /  mean [purchasing] of residences * [number] of purchaser)][set cost-u mean [purchasing] of residences * [number] of purchaser / cost]
+          ]
           set total-utility 0
-          ifelse [current-accessibility] of purchaser > accessibility [set total-utility W-res-purchase-acc * ([current-accessibility] of purchaser - accessibility)][set total-utility W-res-purchase-acc * loss * ([current-accessibility] of purchaser - accessibility)]
-          ifelse [residence-cost] of purchaser > cost [set total-utility total-utility + W-res-purchase-price * ([residence-cost] of purchaser - cost)] [set total-utility total-utility + W-res-purchase-price * loss * ([residence-cost] of purchaser - cost)]          
+          ifelse acc-u > 0 [set total-utility w-res-purchase-acc * acc-u][set total-utility w-res-purchase-acc * loss * acc-u]
+          ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-purchase-price][set total-utility (total-utility + loss * w-res-purchase-price * cost-u)] 
         ]
       ]
       if Att-purchase < T-decrease-purchase  ;simulate decreasing of purchasing
@@ -201,9 +251,17 @@ to purchasing-residence
         [
           let purchaser other-end
           set cost [purchasing] of myself * [number] of purchaser
+          ifelse [count in-purchase-neighbors] of purchaser = 1
+          [
+            ifelse cost > [residence-cost] of purchaser [set cost-u ( - cost / [residence-cost] of purchaser)][set cost-u [residence-cost] of purchaser / cost]
+          ]
+          [
+            ;the purchaser is renting, therefore the model
+            ifelse cost > mean [purchasing] of residences * [number] of purchaser [set cost-u (- cost /  mean [purchasing] of residences * [number] of purchaser)][set cost-u mean [purchasing] of residences * [number] of purchaser / cost]
+          ]
           set total-utility 0
-          ifelse [current-accessibility] of purchaser > accessibility [set total-utility W-res-purchase-acc * ([current-accessibility] of purchaser - accessibility)][set total-utility W-res-purchase-acc * loss * ([current-accessibility] of purchaser - accessibility)]
-          ifelse [residence-cost] of purchaser > cost [set total-utility total-utility + W-res-purchase-price * ([residence-cost] of purchaser - cost)] [set total-utility total-utility + W-res-purchase-price * loss * ([residence-cost] of purchaser - cost)]          
+          ifelse acc-u > 0 [set total-utility w-res-purchase-acc * acc-u][set total-utility w-res-purchase-acc * loss * acc-u]
+          ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-purchase-price][set total-utility (total-utility + loss * w-res-purchase-price * cost-u)] 
         ]
       ]
     ]
@@ -213,9 +271,9 @@ to purchasing-residence
   ]
   
   ;after 5 times of negotiation, this model will prior choose households with mandatory trigger to purchase residential building
-  while [count people with [mandatory = 1 and relationship = 1 and count in-cpurchase-neighbors > 0] > 0]
+  while [count people with [mandatory = 1 and move = 1 and count in-cpurchase-neighbors > 0] > 0]
   [
-    ask one-of people with [mandatory = 1 and relationship = 1 and count in-cpurchase-neighbors > 0]
+    ask one-of people with [mandatory = 1 and move = 1 and count in-cpurchase-neighbors > 0]
     [
       if count in-cpurchase-neighbors > 0
       [
@@ -231,7 +289,16 @@ to purchasing-residence
         ask my-cpurchases [die] ;clear all candidates
         set residence-cost [purchasing] of target * number ;record the cost of the new residential building
         set residence-size number ;update residence size
-        set mandatory 0 set flexible 0 ;Transaction completed successfully, triggers becomes 0
+        set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
+        set transaction-purchase transaction-purchase + 1
+        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
+        set marriage 0
+        set divorce 0
+        set birth 0
+        set death 0
+        set work 0
+        set education 0
+        set immigration 0
         
         ;housing move
         ask people with [hhd = [hhd] of myself]
@@ -255,9 +322,9 @@ to purchasing-residence
   ]
     
   ;simulate transaction of households with flexible triggers
-  while [count people with [flexible >= T-flexible and relationship = 1 and count in-cpurchase-neighbors > 0] > 0]
+  while [count people with [count in-cpurchase-neighbors > 0] > 0]
   [
-    ask one-of people with [flexible >= T-flexible and relationship = 1 and count in-cpurchase-neighbors > 0]
+    ask one-of people with  [count in-cpurchase-neighbors > 0]
     [
       if count in-cpurchase-neighbors > 0
       [
@@ -273,7 +340,16 @@ to purchasing-residence
         ask my-cpurchases [die] 
         set residence-cost [purchasing] of target * number 
         set residence-size number 
-        set mandatory 0 set flexible 0
+        set mandatory 0 set flexible 0 set move 0 
+        set transaction-purchase transaction-purchase + 1
+        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
+        set marriage 0
+        set divorce 0
+        set birth 0
+        set death 0
+        set work 0
+        set education 0
+        set immigration 0
         
         ;housing move 
         ask people with [hhd = [hhd] of myself]
@@ -305,7 +381,7 @@ to rent-residence
   while [i <= 5] ;5 times negotiation
   [
     set i i + 1
-    ask people with [relationship = 1 and (mandatory = 1 or flexible >= T-flexible)]
+    ask people with [move = 1 and  count in-crent-neighbors < max-num-residences]
     [
       if count in-crent-neighbors < max-num-residences and count residences with [capacity >= [number] of myself and renter-income * T-rent-afford <= ([hhd-income] of myself / [number] of myself)] > 0
       [
@@ -314,14 +390,19 @@ to rent-residence
         [
           let renter myself
           create-crent-with renter
+          ;calculate utility of candidates
           ask one-of my-crents with [other-end = renter]
           [
             let candidate myself
-            set cost [rrent] of candidate * [number] of renter
+            set cost [rrent] of candidate * [number] of renter ;utility of cost
+            
+            ;calcualet utility of accessibility
             ask people with [hhd = hhd1]
             [
               ifelse wslong = 0 and wslat = 0
+              ;family members who do not need to go to school or work will set variabel 'candidate-ws-dis' at 0
               [set candidate-ws-dis 0]
+              ;otherwise, set 'candidate-ws-dis' at the distance between work/study place and the candidate
               [
                 let wsplace 0
                 ifelse status = 1 [set wsplace one-of in-student-neighbors] [set wsplace one-of in-employee-neighbors]
@@ -331,17 +412,38 @@ to rent-residence
               ]
               set candidate-ws-dis distance candidate
             ]
-            ifelse [current-accessibility] of renter > accessibility [set total-utility W-res-rent-acc * ([current-accessibility] of renter - accessibility)][set total-utility W-res-rent-acc * loss * ([current-accessibility] of renter - accessibility)]
-            ifelse [residence-cost] of renter > cost [set total-utility total-utility + W-res-rent-price * ([residence-cost] of renter - cost)] [set total-utility total-utility + W-res-rent-price * loss * ([residence-cost] of renter - cost)]
+            set accessibility sum [candidate-ws-dis] of people with [hhd = hhd1] ;utility of accessibility
+            if accessibility = 0 [set accessibility 1]
+            
+            ;calcuate the utility
+            ;accessibility
+            ;Calculate the difference between the accessibility of the current house and the accessibility of the candidate
+            ifelse accessibility > [current-accessibility] of renter [set acc-u (- (accessibility / [current-accessibility] of renter))][set acc-u [current-accessibility] of renter / accessibility]
+            ;cost
+            ifelse [count in-rent-neighbors] of renter = 1
+            [
+              ifelse cost > [residence-cost] of renter [set cost-u ( - cost / [residence-cost] of renter)][set cost-u [residence-cost] of renter / cost]
+            ]
+            [
+              ;the purchaser is renting, therefore the model
+              ifelse cost > mean [rrent] of residences * [number] of renter [set cost-u (- cost /  mean [rrent] of residences * [number] of renter)][set cost-u mean [rrent] of residences * [number] of renter / cost]
+            ]
           ]
         ]
       ]
+    ]
+    
+     ask crents 
+    [
+      ifelse acc-u > 0 [set total-utility w-res-rent-acc * acc-u][set total-utility w-res-rent-acc * loss * acc-u]
+      ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-rent-price][set total-utility (total-utility + loss * w-res-rent-price * cost-u)]
+      if total-utility <= rent-prospect [die]
     ]
 
     
     ;residential buildings update rent
     ask residences [set att-rent 0]
-    let T-rise-rent 100 ;This determine a threshold of rising the rent
+    let T-rise-rent 0 ;This determine a threshold of rising the rent
     let T-decrease-rent -200 ;This determine a threshold of decreasing the rent
     
     ask residences with [capacity > 0][set att-rent sum [total-utility] of my-crents / capacity]
@@ -367,8 +469,8 @@ to rent-residence
           let renter other-end
           set cost [Rrent] of myself * [number] of renter
           set total-utility 0
-          ifelse [current-accessibility] of renter > accessibility [set total-utility W-res-rent-acc * ([current-accessibility] of renter - accessibility)][set total-utility W-res-rent-acc * loss * ([current-accessibility] of renter - accessibility)]
-          ifelse [residence-cost] of renter > cost [set total-utility total-utility + W-res-rent-price * ([residence-cost] of renter - cost)] [set total-utility total-utility + W-res-rent-price * loss * ([residence-cost] of renter - cost)] 
+          ifelse acc-u > 0 [set total-utility w-res-rent-acc * acc-u][set total-utility w-res-rent-acc * loss * acc-u]
+          ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-rent-price][set total-utility (total-utility + loss * w-res-rent-price * cost-u)]
         ]
       ]
       if att-rent < T-decrease-rent
@@ -379,8 +481,8 @@ to rent-residence
           let renter other-end
           set cost [Rrent] of myself * [number] of renter
           set total-utility 0
-          ifelse [current-accessibility] of renter > accessibility [set total-utility W-res-rent-acc * ([current-accessibility] of renter - accessibility)][set total-utility W-res-rent-acc * loss * ([current-accessibility] of renter - accessibility)]
-          ifelse [residence-cost] of renter > cost [set total-utility total-utility + W-res-rent-price * ([residence-cost] of renter - cost)] [set total-utility total-utility + W-res-rent-price * loss * ([residence-cost] of renter - cost)] 
+          ifelse acc-u > 0 [set total-utility w-res-rent-acc * acc-u][set total-utility w-res-rent-acc * loss * acc-u]
+          ifelse cost-u > 0 [set total-utility total-utility + cost-u * w-res-rent-price][set total-utility (total-utility + loss * w-res-rent-price * cost-u)]
         ]   
       ]
     ]
@@ -390,9 +492,9 @@ to rent-residence
   ]
   
   ;after 5 times of negotiation, this model will prior choose households with mandatory trigger to purchase residential building
-  while [count people with [mandatory = 1 and relationship = 1 and count in-crent-neighbors > 0] > 0]
+  while [count people with [mandatory = 1 and count in-crent-neighbors > 0] > 0]
   [
-    ask one-of people with [mandatory = 1 and relationship = 1 and count in-crent-neighbors > 0]
+    ask one-of people with [mandatory = 1 and count in-crent-neighbors > 0]
     [ 
       if count in-crent-neighbors > 0
       [
@@ -408,7 +510,17 @@ to rent-residence
         ask my-crents [die] 
         set residence-cost [Rrent] of target * number 
         set residence-size number 
-        set mandatory 0 set flexible 0 
+        set mandatory 0 set flexible 0 set move 0 
+        set transaction-rent transaction-rent + 1
+        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
+        set marriage 0
+        set divorce 0
+        set birth 0
+        set death 0
+        set work 0
+        set education 0
+        set immigration 0
+        
         
         ;house moving 
         ask people with [hhd = [hhd] of myself]
@@ -432,9 +544,9 @@ to rent-residence
   ]
  
   ;simulate transaction of households with flexible triggers
-  while [count people with [flexible >= T-flexible and relationship = 1 and count in-crent-neighbors > 0] > 0]
+  while [count people with [count in-crent-neighbors > 0] > 0]
   [
-    ask one-of people with [flexible >= T-flexible and relationship = 1 and count in-crent-neighbors > 0]
+    ask one-of people with [count in-crent-neighbors > 0]
     [ 
       if count in-crent-neighbors > 0
       [
@@ -450,7 +562,16 @@ to rent-residence
         ask my-crents [die] ;所有candidate rent link清空
         set residence-cost [Rrent] of target * number ;更新residence cost
         set residence-size number ;更新residence size
-        set mandatory 0 set flexible 0 ;已完成location choice，trigger清零
+        set mandatory 0 set flexible 0 set move 0 ;已完成location choice，trigger清零
+        set transaction-rent transaction-rent + 1
+        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
+        set marriage 0
+        set divorce 0
+        set birth 0
+        set death 0
+        set work 0
+        set education 0
+        set immigration 0
       
         ;house moving 
         ask people with [hhd = [hhd] of myself]
@@ -479,13 +600,14 @@ end
 to mandatory-residence-renter
   ask residences [set capacity initial-capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]
   ;If no suitable building is found in above purchasing or renting behviors, household with mandatory trigger will rent the building with the lowest rent on the market.
-  ask people with [mandatory = 1 and relationship = 1]
+  ask people with [move = 1 and relationship = 1 and mandatory = 1]
   [
     ask my-purchases [die] ask my-rents [die]
     let target min-one-of residences with [capacity >= [number] of myself] [Rrent]
     create-rent-with target
     set residence-cost [Rrent] of target * number 
     set residence-size number
+    set transaction-rent transaction-rent + 1
     ask people with [hhd = [hhd] of myself]
     [
       set livelong [long] of target
@@ -494,7 +616,15 @@ to mandatory-residence-renter
       ask my-shoppings with [loc = 2][die]
       ask my-leisures with [loc = 2][die]
     ]
-    set mandatory 0 set flexible 0
+    set mandatory 0 set flexible 0 set move 0 
+     file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
+     set marriage 0
+     set divorce 0
+     set birth 0
+     set death 0
+     set work 0
+     set education 0
+     set immigration 0
     ask residences [set capacity initial-capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]
   ]
 end

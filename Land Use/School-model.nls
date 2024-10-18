@@ -32,7 +32,7 @@ to school-birth
     ;Birth of kindergarten
     if sum [count in-student-neighbors] of schools with [category = 1 and district = districtid] >= T-school-birth * sum [capacity] of schools with [district = districtid and category = 1]
     [
-      create-schools 2
+      create-schools 3
       [
         set SchID max [SchID] of schools + 1
         set category 1

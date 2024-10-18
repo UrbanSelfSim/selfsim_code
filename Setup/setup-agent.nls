@@ -1,55 +1,52 @@
 to setup-agent
   setup-map
-  setup-people
   setup-residence
   setup-OBs
   setup-CBs
   setup-schools
   setup-shops
   setup-firms
+  setup-people
 end
 
 to setup-people
-  let people-dataset gis:load-dataset "Input data/household.shp"
+  let people-dataset gis:load-dataset "Input data/Population.shp"
   foreach gis:feature-list-of people-dataset
   [
     vector-feature ->
-;    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
     let pid1 gis:property-value vector-feature "pid"
-    let hhd1 gis:property-value vector-feature "hid"
-    ;let age1 gis:property-value vector-feature "Age"
-    let age-group1 gis:property-value vector-feature "Age_group"
-    let gender1 gis:property-value vector-feature  "Gender"
-    let income1  gis:property-value vector-feature "Income"
-    let education1 gis:property-value vector-feature "Education"
+    let hhd1 gis:property-value vector-feature "hhd"
+    let age1 gis:property-value vector-feature "Age"
+    let age-group1 gis:property-value vector-feature "Page"
+    let gender1 gis:property-value vector-feature  "Pgen"
+    let income1  gis:property-value vector-feature "aincome"
+    let education1 gis:property-value vector-feature "Pedu"
+    let education2 gis:property-value vector-feature "Education"
     let license1 gis:property-value vector-feature "license"
     let number1 gis:property-value vector-feature "number"  
-    let status1 gis:property-value vector-feature "status"  
+    let status1 gis:property-value vector-feature "status"
+    let residence1 gis:property-value vector-feature "residence"
+    let hhd-income1 gis:property-value vector-feature "Hhd_income"
+    let wsplace gis:property-value vector-feature "ws"
+    let ID1 gis:property-value vector-feature "id"
+    let traffic1 gis:property-value vector-feature "traffic"
+;    let Parking1 gis:property-value vector-feature "Parking"
+    let max-distance1 gis:property-value vector-feature "Max"
     
-;    let cv1 gis:property-value vector-feature "CV"
-;    let bev1 gis:property-value vector-feature "BEV"
-;    let phev1 gis:property-value vector-feature "PHEV"
-;    let long-coord item 0 coord-tuple
-;    let lat-coord item 1 coord-tuple
+    let cv1 gis:property-value vector-feature "CV"
+    let bev1 gis:property-value vector-feature "BEV"
+    let phev1 gis:property-value vector-feature "PHEV"
+    let fri1 gis:property-value vector-feature "fri"
+    let neighbor1 gis:property-value vector-feature "neighbor"
+    let adv1 gis:property-value vector-feature "adv"
 
   set-default-shape people "circle"
 
-    create-people 1 [
-;     setxy long-coord lat-coord
-      setxy random-pxcor random-pycor
+    create-people 1 
+    [
       set pid pid1
       set hhd hhd1
-      ;set Age age1
-      (ifelse
-        age-group1 = 1 [set age random 18]
-        age-group1 = 2 [set age 18 + random 7]
-        age-group1 = 3 [set age 25 + random 10]
-        age-group1 = 4 [set age 35 + random 10]
-        age-group1 = 5 [set age 45 + random 10]
-        age-group1 = 6 [set age 55 + random 10]
-        ;age-group1 = 7 
-        [set age 65 + random 35]
-       ) 
+      set age age1
       set Gender gender1
       set Income income1 / 12
       set License license1
@@ -57,31 +54,83 @@ to setup-people
       set education-level education1
       set age-group age-group1
       set status status1
-      
+      set hhd-income hhd-income1
+      set education education2
+      set traffic traffic1
+      set distance-max max-distance1
+      set residence-size residence1
+      if status = 1 and wsplace != "0" [create-student-with one-of schools with [SchID = ID1] set wslong [long] of one-of schools with [SchID = ID1] set wslat [lat] of one-of schools with [SchID = ID1]]
+      if status = 2
+      [
+        (ifelse
+          wsplace = "Schools" [create-employee-with one-of schools with [SchID = ID1] set wslong [long] of one-of schools with [SchID = ID1] set wslat [lat] of one-of schools with [SchID = ID1]]
+          wsplace = "Shops" [create-employee-with one-of shops with [SID = ID1] set wslong [long] of one-of shops with [SID = ID1] set wslat [lat] of one-of shops with [SID = ID1]]
+          ;wsplace = "firm
+          [create-employee-with one-of firms with [FID = ID1] set wslong [long] of one-of firms with [FID = ID1] set wslat [lat] of one-of firms with [FID = ID1]]
+        )
+      ]
 ;      set cv cv1
 ;      set phev phev1
 ;      set bev bev1
-      
-      ;临时设置，之后调整
 ;      set adv random 2
-;      set fri random 2
-;      set nei random 2
-;      set buybev 1 + random 4
-;      set buyphev 1 + random 4
-   
+;      set friendship-effect random 2
+;      set neighbor-effect random 2
+;      set W-BEV W-BEV1
+;      set W-AV W-AV1
+;      set EVF EVF1
     ]
   ]
-; color and size
+  
+  ;为每个家庭找一个hhder
+  let min-hhd min [hhd] of people 
+  let max-hhd max [hhd] of people
+  while [min-hhd <= max-hhd]
+  [
+    ifelse count people with [hhd = min-hhd and age >= 18] > 0
+    [
+      ask one-of people with [hhd = min-hhd and age >= 18]
+      [
+        set relationship 1
+        let my-residence one-of residences with [rid = [residence-size] of myself]
+        ifelse hhd-income > [purchasing] of my-residence * 3
+        [create-purchase-with my-residence set residence-cost [purchasing] of my-residence * number set livelong [long] of my-residence set livelat [lat] of my-residence]
+        [create-rent-with my-residence set residence-cost [rrent] of my-residence * number set livelong [long] of my-residence set livelat [lat] of my-residence]
+        set residence-size number
+        move-to my-residence
+      ]
+    ]
+    [
+      ask one-of people with [hhd = min-hhd]
+      [
+        set relationship 1
+        let my-residence one-of residences with [rid = [residence-size] of myself]
+        ifelse hhd-income > [purchasing] of my-residence * 2 
+        [create-purchase-with my-residence set residence-cost [purchasing] of my-residence * number set livelong [long] of my-residence set livelat [lat] of my-residence set flexible random T-flexible-purchase]
+        [create-rent-with my-residence set residence-cost [rrent] of my-residence * number set livelong [long] of my-residence set livelat [lat] of my-residence]
+        set residence-size number
+        move-to my-residence
+      ]
+    ]
+    set min-hhd min-hhd + 1
+  ]
   ask people 
   [
+    if relationship != 1 
+    [
+      set residence-size 0
+      let hhder one-of people with [hhd = [hhd] of myself and relationship = 1]
+      move-to hhder
+      set livelong [livelong] of hhder
+      set livelat [livelat] of hhder
+    ]
+    set district [pdistrict] of patch-here
     set size 0.5
     set color white
-    set hhd-income sum [income] of people with [hhd = [hhd] of myself]
   ]
 end
 
 to setup-map
-  let Shenzhen-dataset gis:load-dataset "Input data/Shenzhen_map.shp"
+  let Shenzhen-dataset gis:load-dataset "Input data/Beijing.shp"
   gis:set-world-envelope (gis:envelope-of shenzhen-dataset)
   let i 1
   foreach gis:feature-list-of Shenzhen-dataset 
@@ -100,18 +149,26 @@ to setup-map
   gis:set-drawing-color white
   gis:draw shenzhen-dataset 1
   
-  gis:apply-coverage shenzhen-dataset "NAME" pdistrict
+  gis:apply-coverage shenzhen-dataset "NAME_2" pdistrict
   ask patches
   [
     (ifelse
-      pdistrict = "Luohu" [set pdistrict 1]
-      pdistrict = "Futian" [set pdistrict 2]
-      pdistrict = "Nanshan" [set pdistrict 3]
-      pdistrict = "Baoan" [set pdistrict 4]
-      pdistrict = "Longgang" [set pdistrict 5]
-      pdistrict = "Yantian" [set pdistrict 6]
-      pdistrict = "Longhua" [set pdistrict 7]
-      pdistrict = "Pingshan" [set pdistrict 8]
+      pdistrict = "Dongcheng" [set pdistrict 1]
+      pdistrict = "Xicheng" [set pdistrict 2]
+      pdistrict = "Chaoyang" [set pdistrict 3]
+      pdistrict = "Fengtai" [set pdistrict 4]
+      pdistrict = "Shijingshan" [set pdistrict 5]
+      pdistrict = "Haidian" [set pdistrict 6]
+      pdistrict = "Mentougou" [set pdistrict 7]
+      pdistrict = "Fangshan" [set pdistrict 8]
+      pdistrict = "Tongzhou" [set pdistrict 9]
+      pdistrict = "Shunyi" [set pdistrict 10]
+      pdistrict = "Changping" [set pdistrict 11]
+      pdistrict = "Daxing" [set pdistrict 12]
+      pdistrict = "Huairou" [set pdistrict 13]
+      pdistrict = "Pinggu" [set pdistrict 14]
+      pdistrict = "Miyun" [set pdistrict 15]
+      pdistrict = "Yanqing" [set pdistrict 16]
       [set pdistrict 0]
       )
   ]
@@ -124,11 +181,12 @@ to setup-residence
     vector-feature ->
     let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
     let price1 gis:property-value vector-feature "price"
-    ;let rent1 gis:property-value vector-feature "rent"
-    let rid1 gis:property-value vector-feature "RID"
+    let rent1 gis:property-value vector-feature "rent"
+    let rid1 gis:property-value vector-feature "OID_"
     let long1 gis:property-value vector-feature "long"
     let lat1 gis:property-value vector-feature "lat"
     let capacity1 gis:property-value vector-feature "capacity"
+    let district1 gis:property-value vector-feature "district"
     let long-coord item 0 coord-tuple
     let lat-coord item 1 coord-tuple
     set-default-shape residences "house"
@@ -141,11 +199,12 @@ to setup-residence
       setxy long-coord lat-coord
       set long long1
       set lat lat1
-      set Rrent purchasing / 50
+      set rrent rent1
       set initial-capacity capacity 
+      set district district1
     ]
   ]
-  ask residences [set size 0.5 set color green]
+  ;ask residences [set size 0.5 set color green set district [pdistrict] of patch-here]
 end
 
 to setup-OBs
@@ -156,9 +215,9 @@ to setup-OBs
     let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
     let rent1 gis:property-value vector-feature "price"
     let capacity1 gis:property-value vector-feature "capacity"
-    let long1 gis:property-value vector-feature "long"
+    let long1 gis:property-value vector-feature "lng"
     let lat1 gis:property-value vector-feature "lat"
-    let OID1 gis:property-value vector-feature "OID_1"
+    let OID1 gis:property-value vector-feature "CID"
     let long-coord item 0 coord-tuple
     let lat-coord item 1 coord-tuple
     set-default-shape OBs "house"
@@ -169,8 +228,8 @@ to setup-OBs
       set long long1
       set lat lat1
       set OID OID1
-      setxy long-coord lat-coord
       set initial-capacity capacity
+      setxy long-coord lat-coord
     ]
   ]
   ask OBs [set size 0.5 set color blue]
@@ -184,7 +243,7 @@ to setup-CBs
     let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
     let rent1 gis:property-value vector-feature "price"
     let capacity1 gis:property-value vector-feature "capacity"
-    let long1 gis:property-value vector-feature "long"
+    let long1 gis:property-value vector-feature "lng"
     let lat1 gis:property-value vector-feature "lat"
     let CID1 gis:property-value vector-feature "CID"
     let long-coord item 0 coord-tuple
@@ -239,7 +298,7 @@ to setup-shops
   [
     vector-feature ->
     let shid1 gis:property-value vector-feature "ShID"
-    let capacity1 gis:property-value vector-feature "size"
+    let capacity1 gis:property-value vector-feature "capacity"
     let location1 gis:property-value vector-feature "location"
     let staff1 gis:property-value vector-feature "staff"
     set-default-shape firms "triangle"
@@ -267,7 +326,7 @@ to setup-schools
   [
     vector-feature ->
     let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
-    let long1 gis:property-value vector-feature "Long"
+    let long1 gis:property-value vector-feature "Lng"
     let lat1 gis:property-value vector-feature "Lat"
     let SchID1 gis:property-value vector-feature "ScID"
     let Category1 gis:property-value vector-feature "Category"
@@ -291,4 +350,55 @@ to setup-schools
   ]
   
   ask schools [set size 0.5 set color yellow]
+end
+
+to adjust
+  
+  let observed (list 709 1106 3451 2019 568 3132 393 1313 1840 1324 2269 1994 441 457 528 346)
+  
+  ask residences
+  [
+    if count people with [district = [district] of myself] < (item (district - 1) observed)[set status 1]
+  ]
+  
+  let i min [who] of people
+  while [i <= max [who] of people]
+  [
+    if [relationship] of person i = 1
+    [
+      print i
+      let district1 [district] of person i 
+      if count people with [district = district1] > (item (district1 - 1) observed * 1.02)
+      [
+        ask person i
+        [
+          let target min-one-of residences with [capacity > [number] of myself and status = 1][distance myself]
+          if target != nobody
+          [
+            ask my-purchases [die] ask my-rents [die]
+            create-purchase-with target
+            ask people with [hhd = [hhd] of myself]
+            [
+              set livelong [long] of target
+              set livelat [lat] of target
+              move-to target
+              set district [pdistrict] of patch-here
+            ]
+            ask residences [set capacity initial-capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]
+          ]
+        ]
+        ask residences
+        [
+          set status 0
+          if count people with [district = [district] of myself] < (item (district - 1) observed)[set status 1]
+        ]
+      ]
+    ]
+    set i i + 1
+  ]
+  ask people with [relationship = 1]
+  [
+    ifelse count in-rent-neighbors = 1 [set livelong [rid] of one-of in-rent-neighbors][set livelong [rid] of one-of in-purchase-neighbors]
+    ask people with [hhd = [hhd] of myself][set livelong [livelong] of myself]
+  ]
 end

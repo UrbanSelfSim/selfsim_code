@@ -1,21 +1,21 @@
 to death-model  
   let n1 0
   (ifelse 
-    year = 2021 [set n1 round (item 0 Ndeath / 1000)]
-    year = 2022 [set n1 round (item 1 Ndeath / 1000)]
-    year = 2023 [set n1 round (item 2 Ndeath / 1000)]
-    year = 2024 [set n1 round ( item 3 Ndeath / 1000)]
-    year = 2025 [set n1 round ( item 4 Ndeath / 1000)]
-    year = 2026 [set n1 round ( item 5 Ndeath / 1000)]
-    year = 2027 [set n1 round ( item 6 Ndeath / 1000)]
-    year = 2028 [set n1 round ( item 7 Ndeath / 1000)]
-    year = 2029 [set n1 round ( item 8 Ndeath / 1000)]
-    year = 2030 [set n1 round ( item 9 Ndeath / 1000)]
-    year = 2031 [set n1 round ( item 10 Ndeath / 1000)]
+    year = 2019 [set n1 round (item 0 Ndeath / 1000)]
+    year = 2020 [set n1 round (item 1 Ndeath / 1000)]
+    year = 2021 [set n1 round (item 2 Ndeath / 1000)]
+    year = 2022 [set n1 round ( item 3 Ndeath / 1000)]
+    year = 2023 [set n1 round ( item 4 Ndeath / 1000)]
+    year = 2024 [set n1 round ( item 5 Ndeath / 1000)]
+    year = 2025 [set n1 round ( item 6 Ndeath / 1000)]
+    year = 2026 [set n1 round ( item 7 Ndeath / 1000)]
+    year = 2027 [set n1 round ( item 8 Ndeath / 1000)]
+    year = 2028 [set n1 round ( item 9 Ndeath / 1000)]
+    year = 2029 [set n1 round ( item 10 Ndeath / 1000)]
     [set n1 round ( item 11 Ndeath / 1000)]
   )
   
-  ;54岁以下死亡
+  ;people aged below 54 dead
   let i 1
   let num-death1 0.25 * n1
   while [i <= num-death1]
@@ -24,7 +24,7 @@ to death-model
     let target one-of people with [age <= 54]
     ask target
     [
-      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ; if the householder deads and the number of family members is not less than 2, another person will be designated as householder
       [
         let hhd1 hhd
         set relationship 0
@@ -41,6 +41,21 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+          set marriage [marriage] of target
+          set divorce [divorce] of target
+          set birth [birth] of target
+          set death [death] of target + 1
+          set work [work] of target
+          set education [education] of target
+          set immigration [immigration] of target
+        ]
+      ]
+      if relationship != 1
+      [
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1]
+        [
+          set flexible flexible + 1
+          set death death + 1
         ]
       ]
       die
@@ -55,7 +70,7 @@ to death-model
     let target one-of people with [age >= 55 and age <= 79]
     ask target
     [
-      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ; if the householder deads and the number of family members is not less than 2, another person will be designated as householder
       [
         let hhd1 hhd
         set relationship 0
@@ -72,6 +87,22 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+          set marriage [marriage] of target
+          set divorce [divorce] of target
+          set birth [birth] of target
+          set death [death] of target + 1
+          set work [work] of target
+          set education [education] of target
+          set immigration [immigration] of target
+        ]
+      ]
+      
+      if relationship != 1
+      [
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1]
+        [
+          set flexible flexible + 1
+          set death death + 1
         ]
       ]
       die
@@ -86,7 +117,7 @@ to death-model
     let target one-of people with [age >= 80]
     ask target
     [
-      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ;如果死亡的人为户主，且家庭中超过2人
+      if (relationship = 1 and count people with [hhd = [hhd] of myself] >= 2) ; if the householder deads and the number of family members is not less than 2, another person will be designated as householder
       [
         let hhd1 hhd
         set relationship 0
@@ -103,6 +134,22 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
+          set marriage [marriage] of target
+          set divorce [divorce] of target
+          set birth [birth] of target
+          set death [death] of target + 1
+          set work [work] of target
+          set education [education] of target
+          set immigration [immigration] of target
+        ]
+      ]
+      
+      if relationship != 1
+      [
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1]
+        [
+          set flexible flexible + 1
+          set death death + 1
         ]
       ]
       die

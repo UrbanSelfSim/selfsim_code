@@ -138,4 +138,6 @@ to output-data
     file-print (word who ", " wslong  ", " wslat  )
   ]
   file-close
+  
+
 end

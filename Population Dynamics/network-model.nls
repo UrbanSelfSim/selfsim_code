@@ -24,6 +24,15 @@ to combine-attribute
     if (income > 8000 and income <= 10000) [set income-group 5]
     if (income > 10000 and income <= 15000) [set income-group 6]
     if (income >= 15000) [set income-group 7]
+  
+  ;combine household  income
+    if hhd-income <= 100000 [set hhd-income 1]
+    if hhd-income > 100000 and hhd-income <= 200000 [set hhd-income-group 2]
+    if hhd-income > 200000 and hhd-income <= 300000 [set hhd-income-group 3]
+    if hhd-income > 300000 and hhd-income <= 400000 [set hhd-income-group 3]
+    if hhd-income > 500000 and hhd-income <= 700000 [set hhd-income-group 4]
+    if hhd-income > 700000 and hhd-income <= 1000000 [set hhd-income-group 5]
+    if hhd-income > 1000000 [set hhd-income-group 7]
   ]
 end
 

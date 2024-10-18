@@ -30,7 +30,7 @@ to education-model
   ;update flexible triggers of households
   ask people with [status = 5]
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set study study + 1]
   ]
   
   ;simulate students enter new schools

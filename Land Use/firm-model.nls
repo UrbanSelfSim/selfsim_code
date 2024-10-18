@@ -1,120 +1,121 @@
 OBs-own
 [
   OID
-  frent ;租金每capacity of firm
-  initial-capacity ;房屋的初始capacity
-  capacity
-  long
-  lat
-  attractiveness
-  change ;本年度rent的变化
-  frent-max
-  frent-min
+  frent ;rent of capacity 
+  initial-capacity ;initial capacity
+  capacity; remaining capacity
+  long ;longitude 
+  lat ;latitude
+  attractiveness ;attractiveness of office building
+  frent-max ;The maximum value that rent can rise to
+  frent-min ;The minimum value that rent can fall to
 ]
 
+;cfrents are used to record the utility of candidate office building
 cfrents-own
 [
-  Lrent
-  Laccessibility
-  Lagglomeration
-  Ulocation
+  Lrent ;utility of rent
+  Laccessibility ;utility of accessibility
+  Lagglomeration ;utility of agglomeration
+  Ulocation ;total utility of the candidate office building
 ]
 
 firms-own
 [
-  ;基础信息
-  FID  ;公司的ID
-  Age ;公司的年龄
+  FID  ;ID of firm
+  Age ;age of firm
 
-  Capacity ;本年度公司规模
-  staff ;实际公司的应有员工数量
-  closure ;记录增长率低于T-closure的年份
+  Capacity ;capacity of firm
+  staff ;the actual staff in the firm 
+  closure ;for how many years the firm's growth rate of capacity is lower than the closure threshold
 
-  ;公司地址相关
-  office-size ;工位数量
-  office-cost ;本年度的租金
-  office-cost-last ;去年租金
-  office-cost-next ;下一年的租金
+  office-size ;Number of workstations
+  office-cost ;Office rent for this year
+  office-cost-last ;office rent of last year
+  office-cost-next ;office rent of next year
   agg ;agglomeration
-  agg-last ;去年的agglomeration
+  agg-last ;agglomeration last year
   acc ;accessibility
-  acc-last ;去年的accessibility
+  acc-last ;accessibility last year
 
-  location-choice ;是否要换地址
-  Long  ;公司的经度
-  Lat  ;公司的纬度
-  UMove
+  location-choice ;Should the company move to another office building
+  Long  ;longitude
+  Lat  ;latitude
+  UMove ;Utility of move to another office building. If Umove greater than a threshold, the firm will move. 
 ]
 
 to firm-model
   ask firms
   [
     if count in-employee-neighbors = 0 [die]
-    ;更新cost（rent）
+    ;update office cost
     set office-cost-last office-cost
     set office-cost office-cost-next
     
-    ;更新agglomeration
+    ;update agglomeration
     set agg-last agg
     set agg sum [count in-employee-neighbors] of other firms in-radius 2.5
-    if agg = 0 [set agg 1] ;在测试case中大多数firms的agg = 0，无法进行后续的计算，暂时赋值为1（数据量大了之后应该不会出现这样的情况）
+    if agg = 0 [set agg 1] ;To avoid the occurrence of dividing by 0
     
-    ;更新accessibility由于暂时无法计算出每个员工的通勤时间，故用直线距离计算accessibility
+    ;update accessibility (in this case, accessibility is the distance between residential location 
     set acc-last acc
     ask in-employee-neighbors [set current-ws-dis distance myself]
     set acc sum [current-ws-dis] of in-employee-neighbors / count in-employee-neighbors
   ]
   
-  ;计算本年度office building的rent的变化上下限
+  ;Set the upper and lower limits for OBs to rise and fall
   ask OBs
   [
     set frent-max frent + frent * T-OB-increase
     set frent-min frent - frent * T-OB-decrease
-    set capacity sum [office-size] of in-rent-neighbors
+    set capacity initial-capacity - sum [office-size] of in-rent-neighbors
   ]
   
+  if count firms with [office-size = 0] > 0 [print 1]
+  
   firm-birth
+  if count firms with [office-size = 0] > 0 [print 2]
   
   firm-growth-closure
+  if count firms with [office-size = 0] > 0 [print 3]
   
   firm-move
+  if count firms with [office-size = 0] > 0 [print 4]
   
   print "firm-model finished"
 end
 
 to firm-growth-closure
-  ;定义系数
+  ;
   let p-random 0
   
   ask firms 
   [
-    ;计算本年度的capacity
-    let capacity-upper round (capacity * T-growth-upper + capacity);本年度capacity上限
-    let capacity-lower round (capacity * T-growth-lower + capacity);本年度capacity下限
-    let capacity-closure round (capacity * T-closure * T-growth-lower + capacity) ;倒闭threshold
+    let capacity-upper round (capacity * T-growth-upper + capacity) ;set the upper limit
+    let capacity-lower round (capacity * T-growth-lower + capacity) ;set the lower limit
+    let capacity-closure round (capacity * T-closure * T-growth-lower + capacity) ;the threshold of firm closure
     
+    ;update capacity
     set capacity round (exp (W-growth-size * ln capacity + W-growth-sizesq * ln capacity * ln capacity + W-growth-age * age + W-growth-acc * acc + p-random))
-    
-    ;capacity受到growth-upper和growth-lower的限制
+    ;Control the updated capacity within the upper and lower limits
     (ifelse 
       capacity > capacity-upper [set capacity capacity-upper]
       capacity < capacity-lower [set capacity capacity-lower]
       [set capacity capacity]
     )
-    
-    ;判断是否会倒闭
+    ;Check if capacity is below the threshold for closure
     ifelse capacity < capacity-closure [set closure closure + 1][set closure 0]
   ]
   
-  ;公司倒闭
-  ask firms with [closure = 3]  ;如果连续N（N暂时设定为3）年capacity小于capacity-closure，或公司员工数量为0，公司倒闭
+  ;firm closure
+  ask firms with [closure = 3]  ;If the capacity is less than capacity closure for 3 consecutive years, or if the number of employees is 0, the firm will close
   [
     ask in-employee-neighbors
     [
       ask my-employees [die]
     ]
 
-    ;该公司所在的office building capacity增加
+    ;update the capacity of office building
     ask in-rent-neighbors
     [
       set capacity capacity + [office-size] of myself
@@ -124,10 +125,10 @@ to firm-growth-closure
 end
 
 to firm-birth
-  ;firm birth有两种途径：（1）新公司成立；（2）现有公司分裂
+  ;There are two types of new firms: (1) start-ups; (2)branches of existing firms
   
-  ;模拟现有公司分裂
-  let R-exist 0.01 ;每年公司分裂的比例
+  ;branches of existing firms
+  let R-exist 0.005 ;the proportion of exist firms will establish branches
   create-firms int (R-exist * count firms)
   [
     set fid max [fid] of firms + 1
@@ -146,12 +147,12 @@ to firm-birth
     ]
   ]
   
-  ;模拟新公司成立
-  let r-new 0.01 ;新公司成立的比例
+  ;set-ups
+  let r-new 0.005
   set labor-current count people with [status = 2 or status = 3]
   if labor-current > labor-lastyear
   [
-    create-firms int (0.01 * (labor-current - labor-lastyear)) ;0.01为暂时设定的系数，需要测试
+    create-firms int (r-new * (labor-current - labor-lastyear))
     [
       set fid max [fid] of firms + 1
       set capacity random 10 + 1           
@@ -160,6 +161,7 @@ to firm-birth
     ]
   ]
   
+  ;
   ask firms with [age = 1]
   [
     set acc mean [acc] of firms with [age != 1]
@@ -172,39 +174,33 @@ to firm-birth
 end
 
 to firm-move
-  ;判断每家公司是否需要换地方
-  ;定义系数
-  let m-random 1
-  ;定义threshold
+  ;There are two steps in this fuction: 1) determine whether firms will move; 2) determine where to move
   
+  ;Step 1: determine whether firms will move
+  let m-random 1
   ask firms with [location-choice = 0]
   [
-    ;计算uitility
+    ;calculate utility of rent, accessibility, agglomeration, space
     let Mrent (office-cost / office-cost-last) / (mean [office-cost] of firms / mean [office-cost-last] of firms) - 1
     let Macc (acc / acc-last) / (mean [acc] of firms / mean [acc-last] of firms) - 1
     let Magg (agg / agg-last) / (mean [agg] of firms / mean [agg-last] of firms) - 1
     let Mspace abs (capacity - office-size) / office-size
     
+    ;calculate the total utility
     set Umove W-move-rent * Mrent + W-move-acc * Macc + W-move-agg * Magg + W-move-space * Mspace + m-random
     
+    ;if the utility of move is greater than the threshold of move, the firm will move to another office building in this simulation year,
     if Umove > T-firm-move [set location-choice 1]
   ]
   
-  ;判断要搬去哪里
-  
-  ;定义计算location utility的系数
-  
-  
-  let l-random 1
-  
-  ;模拟5次negotiation
-  let i 1
-  let max-num-OBs 5 ;每个firm能考虑的residence的最大个数
-  while [i <= 5]
+  ;mock negotiation
+  let i 1 
+  let max-num-OBs 5 ;this variable determines in each negotiation, the maximum number of office building a firm can simultaneously take them as candidates.
+  while [i <= 5] ;negotiation will repeat 5 times (the time can be adjusted)
   [
     set i i + 1
     print i
-    ;寻找一些candidate office buildings
+    ;ask firms to find take candidate office buildings with capacity greater than capacity of theirselves as candidates, and calculate utility of candidates
     ask firms with [location-choice = 1]
     [
       if count in-cfrent-neighbors < max-num-OBs and count OBs with [capacity > [capacity] of myself] > 0
@@ -214,28 +210,27 @@ to firm-move
         create-cfrents-with candidate1 
         ask my-cfrents with [other-end = candidate1]
         [
-          ;记录utility of cost
-          set Lrent [frent] of candidate1 / mean [frent] of OBs
-          ;记录accessibility
-          ask leaser-employees [set candidate-ws-dis distance candidate1]
-          set Laccessibility sum [1 / candidate-ws-dis] of leaser-employees / mean [acc] of firms
-          ;记录utility of agglomeration
+          ;utility of rent
+          set Lrent [frent] of candidate1 / mean [frent] of OBs - 1
+          ;calculate accessibility
+          ask leaser-employees [set candidate-ws-dis distance candidate1] ;ask employees records the distance between the employees and the candidate office building
+          set Laccessibility sum [candidate-ws-dis] of leaser-employees / count leaser-employees / mean [acc] of firms - 1 ;
+          ;calculate utility of agglomeration
           let Uagg 0
           ask candidate1 [set Uagg sum [count in-employee-neighbors] of in-rent-neighbors]
-          set Lagglomeration Uagg / mean [agg] of firms
-          ;计算Utility
-          set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration + l-random
+          set Lagglomeration Uagg / mean [agg] of firms - 1
+          ;calculate utility
+          set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration
         ]
       ]
     ]
     
     ;Office buildings update attractiveness and rents
-    ;定义参数
-    let T-lower 1
-    let T-upper 10
-    let R-increase 0.1
-    let R-decrease -0.1
-    ;更新rents
+    let T-lower 0.5 ;The variable determines a lower limit. If office buildings' attractiveness is lower than the lower limit, they will reduce the rent.
+    let T-upper 1 ;The variable determines a upper limit. If office buildings' attractiveness is greater than the lower limit, they will reduce the rent.
+    let R-increase 0.1 ;increase rate
+    let R-decrease -0.1 ;decrease rate
+
     ask OBs [set attractiveness 0]
     ask OBs with [capacity > 0]
     [
@@ -243,30 +238,39 @@ to firm-move
       (ifelse 
         attractiveness > T-upper 
         [
-          ;更新租金
+          ;update rent
           set frent frent + R-increase * (attractiveness - T-upper) * frent
           if frent > frent-max [set frent frent-max]
-          
-          ;更新utility
-          ask my-cfrents [set Lrent [frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration + l-random]
+          ;update utility
+          ask my-cfrents [set Lrent [frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration]
         ]
         attractiveness < T-lower 
         [
-          ;更新租金
-          set frent frent + R-decrease * (attractiveness - T-lower) * frent
+          ;update rent
+          set frent frent + R-decrease * (T-lower - attractiveness) * frent
           if frent < frent-min [set frent frent-min]
-          ;更新utility
-          ask my-cfrents [set Lrent [1 / frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration + l-random]
+          ;update utility
+          ask my-cfrents [set Lrent [1 / frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration ]
         ]
         [set frent frent]
       )
     ]
+    
+    ;export attractiveness
+;    let file-name-att (word "Output Data/Annualoutput/ob rent att" year "round" i ".csv")
+;    file-open file-name-att
+;    file-print "OID,att"
+;    ask OBs with [capacity > 0]
+;    [
+;      file-print (word who ", "attractiveness)
+;    ]
+;    file-close
   ]
   
-  ;五次协商之后进行交易
+  ;simulate transaction after 5 times negotiation
   while [count firms with [location-choice = 1 and count in-cfrent-neighbors > 0] > 0]
   [
-    ask one-of firms with [location-choice = 1 and count in-cfrent-neighbors > 0]
+    ask max-one-of firms with [location-choice = 1 and count in-cfrent-neighbors > 0] [capacity] ;
     [
       set location-choice 0
       ask my-rents [die]
@@ -283,49 +287,56 @@ to firm-move
       move-to target
       ask target 
       [
-        ;更新capacity
+        ;update capacity
         set capacity capacity - [capacity] of myself
-        ;因capacity不足，而断开链接
+        ;check whether the capacity is enough for firms who take this office building as a candidate. If the capacity is less than those firms' capacity, this office building will not be taken as a candidate by those firms.
         ask my-cfrents with [[capacity] of other-end < [capacity] of myself] [die]
       ]
+      ;employees update their location of work place and the distance between home and work place
       ask my-staff 
       [
         set wslong [long] of myself
         set wslat [lat] of myself
         set current-ws-dis distance myself
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work + 1]
       ]
     ]
   ]
   
-  ;若在上述交易中，仍有firms未找到location，选择市面上rent最低的office building进行交易
+  ;For firms do not find a proper office building to settle, they will 
   ask firms with [location-choice = 1]
   [
-    let target min-one-of OBs with [capacity >= [capacity] of myself] [frent]
+    let target nobody
+    ifelse count OBs with [capacity >= [capacity] of myself] = 0 
+    [set target max-one-of OBs [capacity]]
+    [set target min-one-of OBs with [capacity >= [capacity] of myself] [frent]]
     set location-choice 0
     ask my-rents [die]
     let my-staff employee-neighbors
     create-rent-with target
     set long [long] of target
     set lat [lat] of target
-    set office-size capacity
-    set office-cost-next capacity * [frent] of target
+    ifelse [capacity] of target > capacity [set office-size capacity][set office-size [capacity] of target]
+    set office-cost-next office-size * [frent] of target
     move-to target
     ask target 
     [
-      ;更新capacity
-      set capacity capacity - [capacity] of myself
+      ;update capacity
+      set capacity capacity - [office-size] of myself
     ]
     ask my-staff 
     [
       set wslong [long] of myself
       set wslat [lat] of myself
       set current-ws-dis distance myself
+      ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work + 1]
     ]
   ]
 end
 
 to develop-new-OB
-  ;更新demand
+  ;This function is used to mock goverment/real estate developers will build new office buildings on high demand patches.
+  ;update demand
   ask patches with [pdistrict != 0 and count turtles-here = 0]
   [
     let my-neighbors neighbors with [pdistrict != 0]
@@ -335,16 +346,16 @@ to develop-new-OB
     ]
   ]
   
-  ;政府/开发商会在部分需求较高的地区建立新房
-  
-  ;找到需求最高的N个patch
-  ask max-n-of 5 patches [dem-ob][set pcolor blue] ;用蓝色标记
   
   
-  ;创建N个新的residence
-  create-OBs 5
+  ;Find the N patches with the highest demand, and mark them
+  ask max-n-of 1 patches [dem-ob][set pcolor blue]
+  
+  
+  ;create N new office buildings
+  create-OBs 1
   [
-    set initial-capacity 20 ;假设每个residence的capacity为20
+    set initial-capacity 120 ;assuming that the capacity of each new residence is 120
     set capacity initial-capacity
     move-to one-of patches with [pcolor = blue]
     ask patch-here [set pcolor 0]
@@ -352,7 +363,7 @@ to develop-new-OB
     set size 0.5 set color green set shape "blue"
   ]
   
-  ;换算经纬度
+  ;Calculate longitude and latitude based on netlogo coordinates
   let long1 []
   let lat1 []
   let xcor1 []

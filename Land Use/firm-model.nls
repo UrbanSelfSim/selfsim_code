@@ -298,7 +298,7 @@ to firm-move
         set wslong [long] of myself
         set wslat [lat] of myself
         set current-ws-dis distance myself
-        ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work + 1]
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
       ]
     ]
   ]
@@ -329,7 +329,7 @@ to firm-move
       set wslong [long] of myself
       set wslat [lat] of myself
       set current-ws-dis distance myself
-      ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work + 1]
+      ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
     ]
   ]
 end

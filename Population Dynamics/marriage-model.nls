@@ -128,7 +128,7 @@ to marriage-model
     [
       set new-family 1
       let hhd1 (max [hhd] of people + 1)
-      ask one-of people with [(hhd = [hhd] of bride and relationship = 1) or (hhd = [hhd] of bridegroom and relationship = 1)][set flexible flexible + 1 set marriage marriage + 1] ;two original households' flexible trigger increases by 1
+      ask one-of people with [(hhd = [hhd] of bride and relationship = 1) or (hhd = [hhd] of bridegroom and relationship = 1)][set flexible flexible + 1] ;two original households' flexible trigger increases by 1
       let child-bridegroom people with [hhd = [hhd] of bridegroom and age < 18 and in-parent-neighbor? bridegroom] ;record children of bridegroom aged below 18 years old
       let child-bride people with [hhd = [hhd] of bride and age < 18 and in-parent-neighbor? bride] ;record children of bride aged below 18 years old
       ask bridegroom [set hhd hhd1 set relationship 1 set mandatory 1]
@@ -141,7 +141,7 @@ to marriage-model
     if ([relationship] of bride = 1 and [relationship] of bridegroom != 1 and new-family = 0) ;Bride is householder, groom is not, groom joins bride's household
     [
       set new-family 1
-      ask one-of people with [hhd = [hhd] of bridegroom and relationship = 1][set flexible flexible + 1  set marriage marriage + 1]
+      ask one-of people with [hhd = [hhd] of bridegroom and relationship = 1][set flexible flexible + 1]
       let child-bridegroom people with [hhd = [hhd] of bridegroom and age < 18 and parent-neighbor? bridegroom] ;record children of bridegroom aged below 18 years old
       ask bridegroom [set hhd [hhd] of bride set relationship 2]
       ask child-bridegroom [set hhd [hhd] of bride set relationship 3]
@@ -151,7 +151,7 @@ to marriage-model
     if ([relationship] of bride != 1 and [relationship] of bridegroom = 1 and new-family = 0) ;bridegroom is householder, bride is not, bride joins bridegroom's household
     [
       set new-family 1
-      ask one-of people with [hhd = [hhd] of bride and relationship = 1][set flexible flexible + 1  set marriage marriage + 1] ;bride's original household's flexible trigger increases by 1
+      ask one-of people with [hhd = [hhd] of bride and relationship = 1][set flexible flexible + 1] ;bride's original household's flexible trigger increases by 1
       let child-bride people with [hhd = [hhd] of bride and age < 18 and parent-neighbor? bridegroom] ;record children of bride aged below 18 years old
       ask bride [set hhd [hhd] of bridegroom set relationship 2]
       ask child-bride [set hhd [hhd] of bridegroom set relationship 3]
@@ -172,7 +172,7 @@ to marriage-model
         let child-bridegroom people with [hhd = hhd1 and age < 18 and parent-neighbor? bridegroom] 
         if child-bridegroom != nobody [ask child-bridegroom [set hhd hhd2 set relationship 3]]
         ask people with [hhd = hhd2][move-to bride set livelong [livelong] of bride set livelat [livelat] of bride]
-        ask bride [set flexible flexible + 1  set marriage marriage + 1] 
+        ask bride [set flexible flexible + 1] 
         
         ;The groom's original family chooses a householder and renews the family relationship
         if (count people with [hhd =  hhd1] > 0)
@@ -187,13 +187,6 @@ to marriage-model
           [
             set mandatory [mandatory] of bridegroom 
             set flexible [flexible] of bridegroom + 1
-            set marriage [marriage] of bridegroom + 1
-            set divorce [divorce] of bridegroom
-            set birth [birth] of bridegroom
-            set death [death] of bridegroom
-            set work [work] of bridegroom
-            set education [education] of bridegroom
-            set immigration [immigration] of bridegroom
 
             update-relationship hhd1 hhder ;renews the family relationship
             ;New householder records residence-related information
@@ -217,7 +210,7 @@ to marriage-model
         let child-bride people with [hhd = hhd1 and age < 18 and parent-neighbor? bride] 
         if child-bride != nobody [ask child-bride [set hhd hhd1 set relationship 3]]
         ask people with [hhd = hhd2][move-to bridegroom set livelong [livelong] of bridegroom set livelat [livelat] of bridegroom]
-        ask bridegroom [set flexible flexible + 1 ] ;由于家庭人数发生变化，flexible trigger + 1
+        ask bridegroom [set flexible flexible + 1 ]
         
         if (count people with [hhd =  hhd1] > 0)
         [
@@ -237,13 +230,7 @@ to marriage-model
             
             set mandatory [mandatory] of bride
             set flexible [flexible] of bride + 1
-            set marriage [marriage] of bride + 1
-            set divorce [divorce] of bride
-            set birth [birth] of bride
-            set death [death] of bride
-            set work [work] of bride
-            set education [education] of bride
-            set immigration [immigration] of bride
+           
           ]        
         ]
       
@@ -356,7 +343,7 @@ to divorce-model
         ]
       ]
       ask wife [update-relationship hhd1 wife set mandatory 1]
-      ask husband [set flexible flexible + 1 set divorce divorce + 1]
+      ask husband [set flexible flexible + 1]
     ]
   
     if ([relationship] of husband = 2 and new-family = 0) ;husband's relationship equals to 2
@@ -376,8 +363,8 @@ to divorce-model
           ]
         ]
       ]
-      ask husband [update-relationship hhd1 husband set mandatory 1 set divorce divorce + 1]
-      ask wife [set flexible flexible + 1 set divorce divorce + 1]
+      ask husband [update-relationship hhd1 husband set mandatory 1]
+      ask wife [set flexible flexible + 1]
     ]
   
     ;Son-in-law/daughter-in-law leaving
@@ -397,13 +384,13 @@ to divorce-model
           ]
         ]
       ]
-      ask wife [update-relationship hhd1 wife set mandatory 1 set divorce divorce + 1]
-      ask one-of people with [hhd = [hhd] of husband and relationship = 1] [set flexible flexible + 1  set divorce divorce + 1]
+      ask wife [update-relationship hhd1 wife set mandatory 1]
+      ask one-of people with [hhd = [hhd] of husband and relationship = 1] [set flexible flexible + 1]
     ]
   
     if ([relationship] of husband = 13 and new-family = 0) ;if relationship of wife is 13
     [
-      ask husband [set hhd hhd1 set relationship 1 set mandatory 1 set divorce divorce + 1]
+      ask husband [set hhd hhd1 set relationship 1 set mandatory 1]
       let children2 people with [parent-neighbor? wife and parent-neighbor? husband and age < 18] 
       if children2 != nobody
       [
@@ -416,20 +403,20 @@ to divorce-model
           ]
         ]
       ]
-      ask husband [update-relationship hhd1 husband set mandatory 1] set divorce divorce + 1 
-      ask one-of people with [hhd = [hhd] of wife and relationship = 1][set flexible flexible + 1  set divorce divorce + 1]
+      ask husband [update-relationship hhd1 husband set mandatory 1]
+      ask one-of people with [hhd = [hhd] of wife and relationship = 1][set flexible flexible + 1]
     ]
   
     if ([relationship] of wife != 1 and [relationship] of wife != 2 and [relationship] of wife != 13 and new-family = 0)  ;otherwise, randomly select one to leave
     [
       ifelse (random-float 1 > 0.5) ;p > 0.5 wife is selected；p<= 0.5 husband is slected
       [
-        ask wife [set hhd hhd1 set relationship 1 set mandatory 1 set divorce divorce + 1]
-        ask one-of people with [hhd = [hhd] of husband and relationship = 1][set flexible flexible + 1  set divorce divorce + 1]
+        ask wife [set hhd hhd1 set relationship 1 set mandatory 1]
+        ask one-of people with [hhd = [hhd] of husband and relationship = 1][set flexible flexible + 1]
       ]
       [
-        ask husband [set hhd hhd1 set relationship 1 set mandatory 1 set divorce divorce + 1]
-        ask one-of people with [hhd = [hhd] of wife and relationship = 1][set flexible flexible + 1  set divorce divorce + 1]
+        ask husband [set hhd hhd1 set relationship 1 set mandatory 1]
+        ask one-of people with [hhd = [hhd] of wife and relationship = 1][set flexible flexible + 1]
       ]
     ]
     set color white ask husband [set color white]

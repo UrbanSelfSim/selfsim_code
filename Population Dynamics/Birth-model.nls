@@ -17,7 +17,7 @@ to birth-model
   )
   ask up-to-n-of n1 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 20 and age <= 24 ]
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1 set birth birth + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
     let ft one-of people with [couple-neighbor? myself]
     hatch 1
     [
@@ -70,7 +70,7 @@ to birth-model
   )
   ask up-to-n-of n2 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 25 and age <= 29] 
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1 set birth birth + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
     let ft one-of people with [couple-neighbor? myself]
     hatch 1
     [
@@ -121,7 +121,7 @@ to birth-model
   )
   ask up-to-n-of n3 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 30 and age <= 34] 
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1 set birth birth + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
     let ft one-of people with [couple-neighbor? myself]
     hatch 1
     [
@@ -172,7 +172,7 @@ to birth-model
   )
   ask up-to-n-of n4 people with [gender = 0 and count in-couple-neighbors = 1 and age >= 35 and age <= 39] 
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1 set birth birth + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1] [set flexible flexible + 1]
     let ft one-of people with [couple-neighbor? myself]
     hatch 1
     [

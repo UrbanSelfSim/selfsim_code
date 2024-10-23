@@ -8,7 +8,7 @@ to employ-model
       set income income / 3
       set wslong 0
       set wslat 0
-      ask people with [hhd = [hhd] of myself and relationship = 0] [set flexible flexible + 1 set work work + 1]
+      ask people with [hhd = [hhd] of myself and relationship = 0] [set flexible flexible + 1]
       ask my-employees [die]
       ask my-shoppings with [loc = 1][die]
       ask my-leisures with [loc = 1][die]
@@ -23,7 +23,7 @@ to employ-model
       set income income / 3
       set wslong 0
       set wslat 0
-      ask people with [hhd = [hhd] of myself and relationship = 0] [set flexible flexible + 1 set work work + 1]
+      ask people with [hhd = [hhd] of myself and relationship = 0] [set flexible flexible + 1]
       ask my-employees [die]
       ask my-shoppings with [loc = 1][die]
       ask my-leisures with [loc = 1][die]
@@ -38,7 +38,7 @@ to employ-model
   [
     ifelse random-float 1 <= umemployment ; if the random number below to the unemployment rate, the person will be umemployed
     [
-      if status = 2 [ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work + 1]] ;If this person originally had a job, its household's flexible triggers of house moving would increase by 1 ;
+      if status = 2 [ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]] ;If this person originally had a job, its household's flexible triggers of house moving would increase by 1 ;
       set status 3  ;set the status at 3
     ]
     [set status 2] ; otherwise, set status at 2
@@ -105,7 +105,7 @@ to employ-model
     create-employee-with candidate
     set wslong [long] of candidate
     set wslat [lat] of candidate
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set work work  + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
   ]
   
   print "employ-model finished"

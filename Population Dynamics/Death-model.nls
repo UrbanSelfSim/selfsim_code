@@ -41,13 +41,7 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
-          set marriage [marriage] of target
-          set divorce [divorce] of target
-          set birth [birth] of target
-          set death [death] of target + 1
-          set work [work] of target
-          set education [education] of target
-          set immigration [immigration] of target
+          
         ]
       ]
       if relationship != 1
@@ -55,7 +49,6 @@ to death-model
         ask one-of people with [hhd = [hhd] of myself and relationship = 1]
         [
           set flexible flexible + 1
-          set death death + 1
         ]
       ]
       die
@@ -87,13 +80,6 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
-          set marriage [marriage] of target
-          set divorce [divorce] of target
-          set birth [birth] of target
-          set death [death] of target + 1
-          set work [work] of target
-          set education [education] of target
-          set immigration [immigration] of target
         ]
       ]
       
@@ -102,7 +88,6 @@ to death-model
         ask one-of people with [hhd = [hhd] of myself and relationship = 1]
         [
           set flexible flexible + 1
-          set death death + 1
         ]
       ]
       die
@@ -134,13 +119,7 @@ to death-model
           set residence-size [residence-size] of target
           if [count in-rent-neighbors] of target = 1 [let target1 one-of residences with [rent-neighbor? target] create-rent-with target1]
           if [count in-purchase-neighbors] of target = 1 [let target1 one-of residences with [purchase-neighbor? target] create-purchase-with target1]
-          set marriage [marriage] of target
-          set divorce [divorce] of target
-          set birth [birth] of target
-          set death [death] of target + 1
-          set work [work] of target
-          set education [education] of target
-          set immigration [immigration] of target
+          
         ]
       ]
       
@@ -149,7 +128,6 @@ to death-model
         ask one-of people with [hhd = [hhd] of myself and relationship = 1]
         [
           set flexible flexible + 1
-          set death death + 1
         ]
       ]
       die

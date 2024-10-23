@@ -143,15 +143,6 @@ people-own
   current-accessibility ; accessibility of current residence
   move ;determine whether move house this year
 
-  ;trigger type
-  marriage
-  divorce
-  birth
-  death
-  work
-  study
-  immigration
-
   ;distance between current/candidate residence and work/study location
   candidate-ws-dis
   current-ws-dis

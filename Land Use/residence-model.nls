@@ -291,14 +291,7 @@ to purchasing-residence
         set residence-size number ;update residence size
         set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
         set transaction-purchase transaction-purchase + 1
-        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
-        set marriage 0
-        set divorce 0
-        set birth 0
-        set death 0
-        set work 0
-        set education 0
-        set immigration 0
+       
         
         ;housing move
         ask people with [hhd = [hhd] of myself]
@@ -342,14 +335,7 @@ to purchasing-residence
         set residence-size number 
         set mandatory 0 set flexible 0 set move 0 
         set transaction-purchase transaction-purchase + 1
-        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
-        set marriage 0
-        set divorce 0
-        set birth 0
-        set death 0
-        set work 0
-        set education 0
-        set immigration 0
+        
         
         ;housing move 
         ask people with [hhd = [hhd] of myself]
@@ -512,14 +498,6 @@ to rent-residence
         set residence-size number 
         set mandatory 0 set flexible 0 set move 0 
         set transaction-rent transaction-rent + 1
-        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
-        set marriage 0
-        set divorce 0
-        set birth 0
-        set death 0
-        set work 0
-        set education 0
-        set immigration 0
         
         
         ;house moving 
@@ -564,15 +542,7 @@ to rent-residence
         set residence-size number ;更新residence size
         set mandatory 0 set flexible 0 set move 0 ;已完成location choice，trigger清零
         set transaction-rent transaction-rent + 1
-        file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
-        set marriage 0
-        set divorce 0
-        set birth 0
-        set death 0
-        set work 0
-        set education 0
-        set immigration 0
-      
+       
         ;house moving 
         ask people with [hhd = [hhd] of myself]
         [
@@ -617,14 +587,6 @@ to mandatory-residence-renter
       ask my-leisures with [loc = 2][die]
     ]
     set mandatory 0 set flexible 0 set move 0 
-     file-print (word hhd "," livelong "," livelat "," [long] of target "," [lat] of target "," marriage "," divorce "," birth "," death "," work "," education "," immigration)
-     set marriage 0
-     set divorce 0
-     set birth 0
-     set death 0
-     set work 0
-     set education 0
-     set immigration 0
     ask residences [set capacity initial-capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]
   ]
 end

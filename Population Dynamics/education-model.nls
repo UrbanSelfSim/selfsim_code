@@ -30,7 +30,7 @@ to education-model
   ;update flexible triggers of households
   ask people with [status = 5]
   [
-    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1 set study study + 1]
+    ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
   ]
   
   ;simulate students enter new schools
@@ -39,8 +39,8 @@ to education-model
 end
 
 to higher-education
-  ;Step1：Simulate students whose household has purchased a residence entering kindergarten/primary/middle school
-  ask people with [status = 5 and count people with [hhd = [hhd] of myself and relationship = 1 and count in-purchase-neighbors = 1] = 1 and education <= 2]
+  ;Step1：simulate the progression of students from middle school and below.
+  ask people with [status = 5 and education <= 2]
   [
     let school1 nobody
     (
@@ -91,92 +91,9 @@ to higher-education
     )
   ]
   
-  ;Step2：Simulate students whose household has rented a residence and students who have recently moved into this city entering kindergarten/primary/junior high school
-  ask people with [status = 5 and education <= 2] 
-  [
-    let school1 nobody
-    (
-      ifelse
-      education = 0  ;学龄前儿童上幼儿园
-      [
-        set education 1 set edu-year-required 3 set edu-year 1 set status 1
-        
-        (
-          ifelse count schools in-radius 5 with [category = 1 and capacity > count in-student-neighbors] > 0
-          [set school1 one-of schools in-radius 5 with [category = 1 and capacity > count in-student-neighbors]]
-          count schools with [category = 1 and capacity > count in-student-neighbors and district = [district] of myself] > 0
-          [set school1 one-of schools with [category = 1 and capacity > count in-student-neighbors and district = [district] of myself]]
-          [set school1 min-one-of schools with [category = 1 and capacity > count in-student-neighbors] [distance myself]]
-        )
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-      education = 1 ;幼儿园升小学
-      [
-        set education 2 set edu-year-required 6 set edu-year 1 set status 1
-        (
-          ifelse count schools in-radius 5 with [category = 2 and capacity > count in-student-neighbors] > 0
-          [set school1 one-of schools in-radius 5 with [category = 2 and capacity > count in-student-neighbors]]
-          count schools with [category = 2 and capacity > count in-student-neighbors and district = [district] of myself] > 0
-          [set school1 one-of schools with [category = 2 and capacity > count in-student-neighbors and district = [district] of myself]]
-          [set school1 min-one-of schools with [category = 2 and capacity > count in-student-neighbors][distance myself]]
-        )
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-      ;education = 2 ;小学升初中
-      [
-        set education 3 set edu-year-required 3 set edu-year 1 set status 1
-        (
-          ifelse count schools in-radius 5 with [category = 3 and capacity > count in-student-neighbors] > 0
-          [set school1 one-of schools in-radius 5 with [category = 3 and capacity > count in-student-neighbors]]
-          count schools with [category = 3 and capacity > count in-student-neighbors and district = [district] of myself] > 0
-          [set school1 one-of schools with [category = 3 and capacity > count in-student-neighbors and district = [district] of myself]]
-          [set school1 min-one-of schools with [category = 3 and capacity > count in-student-neighbors][distance myself]]
-        )
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-    )
-  ]
+ 
   
-  ;step 3: 模拟迁入但未完成购房租房人员的学生升幼儿园/小学/初中（随机）
-  ask people with [status = 5 and count people with [hhd = [hhd] of myself and relationship = 1 and count in-rent-neighbors = 0 and count in-purchase-neighbors = 0] = 1]
-  [
-    let school1 nobody
-    (
-      ifelse
-      education = 0  ;学龄前儿童上幼儿园
-      [
-        set education 1 set edu-year-required 3 set edu-year 1 set status 1
-        set school1 one-of schools with [category = 1 and capacity > count in-student-neighbors]
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-      education = 1 ;幼儿园升小学
-      [
-        set education 2 set edu-year-required 6 set edu-year 1 set status 1
-        set school1 one-of schools with [category = 2 and capacity > count in-student-neighbors]
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-      ;education = 2 ;小学升初中
-      [
-        set education 3 set edu-year-required 3 set edu-year 1 set status 1
-        set school1 one-of schools with [category = 2 and capacity > count in-student-neighbors]
-        create-student-with school1
-        set wslong [long] of school1
-        set wslat [lat] of school1
-      ]
-    )
-  ]
-  
-  ;Step3：更新每个高中、职业院校、高等院校的probability
+  ;Step3：update the probability of attending each high school, vocational school, and higher education institution.
   let school4 [] ;list of school with category = 4
   let prob4 [];weights
   ask schools with [category = 4][set school4 lput who school4 set prob4 lput capacity prob4]
@@ -194,30 +111,29 @@ to higher-education
   py:set "prob6" prob6
 
   
-  ;Step4：模拟初中之后的升学之后的升学
+  ;Step4：simulate the progression to further education above middle school
   ask people with [status = 5 and education >= 3]
   [
     let school1 nobody
     let p random-float 1
     (
-      ifelse education = 3 ;初中升高中或中专
+      ifelse education = 3 ;progression from middle school to high school or vocational school.
       [
         ifelse random-float 1 <= 0.5
         [
-          ;50%的可能性升中专
+          ;a 50% probability of progressing to a vocational school
           set education 4 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
             "result = random.choices (school5, prob5)"
           )
           set school1 one-of schools with [who = item 0 py:runresult "result"]
           ;set school1 one-of schools with [category = 5 and prob-low <= p and prob-high >= p]
         ]
         [
-          ;50%的可能性升高中
+          ;a 50% probability of progressing to high school
           set education 5 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
+            
             "result = random.choices (school4, prob4)"
           )
           set school1 school item 0 py:runresult "result"
@@ -227,24 +143,24 @@ to higher-education
         set wslat [lat] of school1
 
       ]
-      education = 4 ;中专升大专/本科
+      education = 4 ;progression from vocational school to college or university
       [
         ifelse random-float 1 <= 0.13
         [
-          ;13%的概率升本科
+          ;a 13% probability of progressing to university.
           set education 7 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
+            
             "result = random.choices (school6, prob6)"
           )
           set school1 school item 0 py:runresult "result"
         ]
         [
-          ;87%的概率升大专
+          ;an 87% probability of progressing to college.
           set education 6 set edu-year-required 3 set edu-year 1 set status 1
           set education 4 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
+            
             "result = random.choices (school5, prob5)"
           )
           set school1 school item 0 py:runresult "result"
@@ -254,23 +170,23 @@ to higher-education
         set wslong [long] of school1
         set wslat [lat] of school1
       ]
-      education = 5 ;高中升大学/大专
+      education = 5 ;progression from high school to university or college.
       [
         ifelse random-float 1 <= 0.5
         [
-          ;50%的可能性升本科
+          ;a 50% probability of progressing to university.
           set education 7 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
+            
             "result = random.choices (school6, prob6)"
           )
           set school1 school item 0 py:runresult "result"
         ]
         [
-          ;50%的可能性升大专
+          ;a 50% probability of progressing to college
           set education 6 set edu-year-required 3 set edu-year 1 set status 1
           (py:run
-            "import random"
+            
             "result = random.choices (school5, prob5)"
           )
           set school1 school item 0 py:runresult "result"
@@ -279,11 +195,11 @@ to higher-education
         set wslong [long] of school1
         set wslat [lat] of school1
       ]
-      education = 6 ;大专升本科
+      education = 6 ;progression from college to university
       [
         set education 8 set edu-year-required 2 set edu-year 1 set status 1
         (py:run
-          "import random"
+          
           "result = random.choices (school6, prob6)"
         )
         set school1 school item 0 py:runresult "result"
@@ -292,11 +208,11 @@ to higher-education
         set wslat [lat] of school1
       ]
       
-      education = 7 or education = 8 ;本科/专升本升硕士研究生
+      education = 7 or education = 8 ;progression from university or college to a master's program.
       [
         set education 9 set edu-year-required 3 set edu-year 1 set status 1
         (py:run
-            "import random"
+            
             "result = random.choices (school6, prob6)"
           )
           set school1 one-of schools with [who = item 0 py:runresult "result"]
@@ -305,11 +221,11 @@ to higher-education
         set wslat [lat] of school1
       ]
       
-      ;education = 9 硕士升博士
+      ;education = 9 progression from a master's program to a doctoral program
       [
         set education 10 set edu-year-required 4 set edu-year 1 set status 1
         (py:run
-            "import random"
+            
             "result = random.choices (school6, prob6)"
           )
           set school1 one-of schools with [who = item 0 py:runresult "result"]

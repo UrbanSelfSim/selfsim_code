@@ -1,0 +1,168 @@
+cfrents-own
+[
+  Lrent ;utility of rent
+  Laccessibility ;utility of accessibility
+  Lagglomeration ;utility of agglomeration
+  Ulocation ;total utility of the candidate office building
+]
+
+to FLC-OBP
+  ;There are two steps in this fuction: 1) determine whether firms will move; 2) determine where to move
+  
+  ;Step 1: determine whether firms will move
+  let m-random 1
+  ask firms with [location-choice = 0]
+  [
+    ;calculate utility of rent, accessibility, agglomeration, space
+    let Mrent (office-cost / office-cost-last) / (mean [office-cost] of firms / mean [office-cost-last] of firms) - 1
+    let Macc (acc / acc-last) / (mean [acc] of firms / mean [acc-last] of firms) - 1
+    let Magg (agg / agg-last) / (mean [agg] of firms / mean [agg-last] of firms) - 1
+    let Mspace abs (capacity - office-size) / office-size
+    
+    ;calculate the total utility
+    set Umove W-move-rent * Mrent + W-move-acc * Macc + W-move-agg * Magg + W-move-space * Mspace + m-random
+    
+    ;if the utility of move is greater than the threshold of move, the firm will move to another office building in this simulation year,
+    if Umove > T-firm-move [set location-choice 1]
+  ]
+  
+  ;mock negotiation
+  let i 1 
+  let max-num-OBs 5 ;this variable determines in each negotiation, the maximum number of office building a firm can simultaneously take them as candidates.
+  while [i <= 5] ;negotiation will repeat 5 times (the time can be adjusted)
+  [
+    set i i + 1
+    print i
+    ;ask firms to find take candidate office buildings with capacity greater than capacity of theirselves as candidates, and calculate utility of candidates
+    ask firms with [location-choice = 1]
+    [
+      if count in-cfrent-neighbors < max-num-OBs and count OBs with [capacity > [capacity] of myself] > 0
+      [
+        let leaser-employees in-employee-neighbors
+        let candidate1 up-to-n-of (max-num-OBs - count in-cfrent-neighbors) OBs with [capacity > [capacity] of myself]
+        create-cfrents-with candidate1 
+        ask my-cfrents with [other-end = candidate1]
+        [
+          ;utility of rent
+          set Lrent [frent] of candidate1 / mean [frent] of OBs - 1
+          ;calculate accessibility
+          ask leaser-employees [set candidate-ws-dis distance candidate1] ;ask employees records the distance between the employees and the candidate office building
+          set Laccessibility sum [candidate-ws-dis] of leaser-employees / count leaser-employees / mean [acc] of firms - 1 ;
+          ;calculate utility of agglomeration
+          let Uagg 0
+          ask candidate1 [set Uagg sum [count in-employee-neighbors] of in-rent-neighbors]
+          set Lagglomeration Uagg / mean [agg] of firms - 1
+          ;calculate utility
+          set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration
+        ]
+      ]
+    ]
+    
+    ;Office buildings update attractiveness and rents
+    let T-lower 0.5 ;The variable determines a lower limit. If office buildings' attractiveness is lower than the lower limit, they will reduce the rent.
+    let T-upper 1 ;The variable determines a upper limit. If office buildings' attractiveness is greater than the lower limit, they will reduce the rent.
+    let R-increase 0.1 ;increase rate
+    let R-decrease -0.1 ;decrease rate
+
+    ask OBs [set attractiveness 0]
+    ask OBs with [capacity > 0]
+    [
+      set attractiveness sum [capacity] of in-cfrent-neighbors / capacity
+      (ifelse 
+        attractiveness > T-upper 
+        [
+          ;update rent
+          set frent frent + R-increase * (attractiveness - T-upper) * frent
+          if frent > frent-max [set frent frent-max]
+          ;update utility
+          ask my-cfrents [set Lrent [frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration]
+        ]
+        attractiveness < T-lower 
+        [
+          ;update rent
+          set frent frent + R-decrease * (T-lower - attractiveness) * frent
+          if frent < frent-min [set frent frent-min]
+          ;update utility
+          ask my-cfrents [set Lrent [1 / frent] of myself / mean [frent] of OBs set Ulocation W-firm-loc-rent * Lrent + W-firm-loc-acc * Laccessibility + W-firm-loc-agg * Lagglomeration ]
+        ]
+        [set frent frent]
+      )
+    ]
+    
+    ;export attractiveness
+;    let file-name-att (word "Output Data/Annualoutput/ob rent att" year "round" i ".csv")
+;    file-open file-name-att
+;    file-print "OID,att"
+;    ask OBs with [capacity > 0]
+;    [
+;      file-print (word who ", "attractiveness)
+;    ]
+;    file-close
+  ]
+  
+  ;simulate transaction after 5 times negotiation
+  while [count firms with [location-choice = 1 and count in-cfrent-neighbors > 0] > 0]
+  [
+    ask max-one-of firms with [location-choice = 1 and count in-cfrent-neighbors > 0] [capacity] ;
+    [
+      set location-choice 0
+      ask my-rents [die]
+      let my-staff employee-neighbors
+      let target-cfrent max-one-of my-cfrents [Ulocation]
+      let target nobody
+      ask target-cfrent [set target other-end]
+      ask my-cfrents [die]
+      create-rent-with target
+      set long [long] of target
+      set lat [lat] of target
+      set office-size capacity
+      set office-cost-next capacity * [frent] of target
+      move-to target
+      ask target 
+      [
+        ;update capacity
+        set capacity capacity - [capacity] of myself
+        ;check whether the capacity is enough for firms who take this office building as a candidate. If the capacity is less than those firms' capacity, this office building will not be taken as a candidate by those firms.
+        ask my-cfrents with [[capacity] of other-end < [capacity] of myself] [die]
+      ]
+      ;employees update their location of work place and the distance between home and work place
+      ask my-staff 
+      [
+        set wslong [long] of myself
+        set wslat [lat] of myself
+        set current-ws-dis distance myself
+        ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
+      ]
+    ]
+  ]
+  
+  ;For firms do not find a proper office building to settle, they will 
+  ask firms with [location-choice = 1]
+  [
+    let target nobody
+    ifelse count OBs with [capacity >= [capacity] of myself] = 0 
+    [set target max-one-of OBs [capacity]]
+    [set target min-one-of OBs with [capacity >= [capacity] of myself] [frent]]
+    set location-choice 0
+    ask my-rents [die]
+    let my-staff employee-neighbors
+    create-rent-with target
+    set long [long] of target
+    set lat [lat] of target
+    ifelse [capacity] of target > capacity [set office-size capacity][set office-size [capacity] of target]
+    set office-cost-next office-size * [frent] of target
+    move-to target
+    ask target 
+    [
+      ;update capacity
+      set capacity capacity - [office-size] of myself
+    ]
+    ask my-staff 
+    [
+      set wslong [long] of myself
+      set wslat [lat] of myself
+      set current-ws-dis distance myself
+      ask one-of people with [hhd = [hhd] of myself and relationship = 1][set flexible flexible + 1]
+    ]
+  ]
+end

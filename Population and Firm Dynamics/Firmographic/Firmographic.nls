@@ -1,0 +1,119 @@
+to firm-birth
+  ;There are two types of new firms: (1) start-ups; (2)branches of existing firms
+  
+  ;branches of existing firms
+  let R-exist 0.005 ;the proportion of exist firms will establish branches
+  create-firms int (R-exist * count firms)
+  [
+    set fid max [fid] of firms + 1
+    set age 1
+    set location-choice 1
+    let parent-firm one-of firms with [count in-employee-neighbors >= 2]
+    let n1 0
+    ask parent-firm [set n1 count in-employee-neighbors]
+    set capacity random n1 + 1
+    ask n-of capacity people with [employee-neighbor? parent-firm]
+    [
+      ask my-employees [die]
+      ask my-shoppings with [loc = 1] [die]
+      ask my-leisures with [loc = 1] [die]
+      create-employee-with myself
+    ]
+  ]
+  
+  ;set-ups
+  let r-new 0.005
+  set labor-current count people with [status = 2 or status = 3]
+  if labor-current > labor-lastyear
+  [
+    create-firms int (r-new * (labor-current - labor-lastyear))
+    [
+      set fid max [fid] of firms + 1
+      set capacity random 10 + 1           
+      set age 1
+      set location-choice 1
+    ]
+  ]
+  
+  ;
+  ask firms with [age = 1]
+  [
+    set acc mean [acc] of firms with [age != 1]
+    set acc-last mean [acc-last] of firms with [age != 1]
+    set agg mean [acc] of firms with [age != 1]
+    set acc-last mean [acc-last] of firms with [age != 1]
+    set office-cost mean [office-cost] of firms with [age != 1]
+    set office-cost-last mean [office-cost-last] of firms with [age != 1]
+  ]
+end
+
+to firm-growth
+  let p-random 0
+  
+  ask firms with [age != 1]
+  [
+    if count in-employee-neighbors = 0 [die]
+    ;update office cost
+    set office-cost-last office-cost
+    set office-cost office-cost-next
+    
+    ;update agglomeration
+    set agg-last agg
+    set agg sum [count in-employee-neighbors] of other firms in-radius 2.5
+    if agg = 0 [set agg 1] ;To avoid the occurrence of dividing by 0
+    
+    ;update accessibility (in this case, accessibility is the distance between residential location 
+    set acc-last acc
+    ask in-employee-neighbors [set current-ws-dis distance myself]
+    set acc sum [current-ws-dis] of in-employee-neighbors / count in-employee-neighbors
+
+    let capacity-upper round (capacity * T-growth-upper + capacity) ;set the upper limit
+    let capacity-lower round (capacity * T-growth-lower + capacity) ;set the lower limit
+    let capacity-closure round (capacity * T-closure * T-growth-lower + capacity) ;the threshold of firm closure
+    
+    ;update capacity
+    set capacity round (exp (W-growth-size * ln capacity + W-growth-sizesq * ln capacity * ln capacity + W-growth-age * age + W-growth-acc * acc + p-random))
+    ;Control the updated capacity within the upper and lower limits
+    (ifelse 
+      capacity > capacity-upper [set capacity capacity-upper]
+      capacity < capacity-lower [set capacity capacity-lower]
+      [set capacity capacity]
+    )
+    ;Check if capacity is below the threshold for closure
+    ifelse capacity < capacity-closure [set closure closure + 1][set closure 0]
+  ]
+  
+  ;firm closure
+  ask firms with [closure = 3]  ;If the capacity is less than capacity closure for 3 consecutive years, or if the number of employees is 0, the firm will close
+  [
+    ask in-employee-neighbors
+    [
+      ask my-employees [die]
+    ]
+
+    ;update the capacity of office building
+    ask in-rent-neighbors
+    [
+      set capacity capacity + [office-size] of myself
+    ]
+    die
+  ]
+end
+
+;firm closure
+to firm-closure
+  ask firms with [closure = 3]  ;If the capacity is less than capacity closure for 3 consecutive years, or if the number of employees is 0, the firm will close
+  [
+    ask in-employee-neighbors
+    [
+      ask my-employees [die]
+    ]
+
+    ;update the capacity of office building
+    ask in-rent-neighbors
+    [
+      set capacity capacity + [office-size] of myself
+    ]
+    die
+  ]
+end

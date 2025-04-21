@@ -1,0 +1,10 @@
+Age Group.csv: shows how age is grouped, where the number of groups and the value range for each group can be defined as needed.
+Education Group.csv: shows how education is grouped, where the number of groups and the value range for each group can be defined as needed.
+Income Group.csv: shows how income is grouped, where the number of groups and the value range for each group can be defined as needed.
+
+SocioNetDistribution:
+This table defines the distribution of the number of friends that a person agent can have. It includes the following columns:
+    ID: A unique identifier for each entry in the distribution.   
+    MaxNum: The maximum number of friends a person agent can have in this group.
+    MinNum: The minimum number of friends a person agent can have in this group.
+    Prob: The probability of a person agent having a number of friends within the specified range (between MinNum and MaxNum).

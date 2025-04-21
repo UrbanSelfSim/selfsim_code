@@ -1,0 +1,47 @@
+MaxCandidate: The maximum number of candidate facilities that can be selected by businessmen.
+MaxNegotiation: The maximum number of negotiations that can take place between businessmen and property owners.
+StopNegotiation: If the price change during negotiations is lower than this threshold, negotiations will stop.
+Loss: A parameter regarding the loss effect, primarily used in calculating the capacity of residential facilities, but can be applied to commercial facilities as well.
+FlePur: A parameter determining how many flexible triggers a businessman needs to decide whether to move into a purchased commercial facility.
+FleRent: A parameter determining how many flexible triggers a businessman needs to decide whether to move into a rented commercial facility.
+ResPriRisDeg: The rate at which the price of a commercial facility increases, affecting the rental cost for businessmen.
+ResPriDesDeg: The rate at which the price of a commercial facility decreases, affecting the rental cost for businessmen.
+ResPriRisAtt: A threshold that defines when the attractiveness of a commercial facility exceeds it, causing the price to rise, thus affecting the decisions of businessmen.
+ResPriDesAtt: A threshold that defines when the attractiveness of a commercial facility falls below it, causing the price to decrease, impacting businessman leasing decisions.
+ResPurAcc: The weight of accessibility when calculating the utility of a commercial property for purchase by businessmen.
+ResPurPrice: The weight of the price when calculating the utility of a commercial property for purchase by businessmen.
+PurAfford: A threshold determining whether a businessman can afford to purchase a commercial property.
+ResPurProspect: A parameter representing the expected utility for a businessman; they will only purchase a commercial facility if the utility exceeds this threshold.
+ResRenRisDeg: The rate at which the rent of a commercial facility increases, influencing the decision of businessmen to lease.
+ResRenDesDeg: The rate at which the rent of a commercial facility decreases, influencing the decision of businessmen to lease.
+ResRenRisAtt: A threshold that defines when the attractiveness of a commercial facility exceeds it, causing the rent to rise, affecting businessman leasing decisions.
+ResRenDesAtt: A threshold that defines when the attractiveness of a commercial facility falls below it, causing the rent to decrease, influencing businessman leasing decisions.
+ResRentAcc: The weight of accessibility when calculating the utility of a commercial facility for leasing.
+ResRentPrice: The weight of rent price when calculating the utility of a commercial facility for leasing.
+RentAfford: A threshold determining whether a businessman can afford the rent for a commercial facility.
+ResRentProspect: A parameter representing the expected utility; businessmen will only rent a commercial facility if the utility exceeds this threshold.
+FMoRent: The weight of rent in the utility calculation for a businessman’s decision to move into a commercial facility.
+FMoAcc: The weight of accessibility in the utility calculation for a businessman’s decision to move into a commercial facility.
+FMoAgg: The weight of agglomeration in the utility calculation for a businessman’s decision to move into a commercial facility.
+FMoSpace: The weight of space in the utility calculation for a businessman’s decision to move into a commercial facility.
+FMoThre: A threshold; if the move utility for a businessman exceeds this value, they will decide to relocate their business to a new facility.
+OffPrice: The weight of the price when calculating the utility of an office facility for a businessman.
+OffAcc: The weight of accessibility when calculating the utility of an office facility for a businessman.
+OffAgg: The weight of agglomeration when calculating the utility of an office facility for a businessman.
+OffRentProspect: A parameter representing the expected utility; businessmen will only lease an office facility if the utility exceeds this threshold.
+OffRisDeg: The rate at which the price of an office facility increases, affecting the cost for businessmen.
+OffDesDeg: The rate at which the price of an office facility decreases, influencing businessman decisions to lease or stay.
+OffRisAtt: A threshold that defines when the attractiveness of an office facility exceeds it, causing rent to increase.
+OffDesAtt: A threshold that defines when the attractiveness of an office facility falls below it, causing rent to decrease.
+OffRentUpper: The upper limit on the rent increase for office facilities within the current simulation year.
+OffRentLower: The lower limit on the rent decrease for office facilities within the current simulation year.
+ComRisDeg: The rate at which the price of a commercial facility increases.
+ComDesDeg: The rate at which the price of a commercial facility decreases.
+ComRisAtt: A threshold that defines when the attractiveness of a commercial facility exceeds it, causing rent to rise.
+ComDesAtt: A threshold that defines when the attractiveness of a commercial facility falls below it, causing rent to decrease.
+ComRentUpper: The upper limit on the rent increase for commercial facilities.
+ComRentLower: The lower limit on the rent decrease for commercial facilities.
+ComRent: The weight of rent in the utility calculation for commercial facilities leased by businessmen.
+ComAgg: The weight of agglomeration when calculating the utility of a commercial facility for a businessman.
+ComFlow: The weight of customer flow in the utility calculation for a commercial facility leased by businessmen.
+ComRentProspect: A parameter representing the expected utility; businessmen will only rent a commercial facility if the utility exceeds this threshold.

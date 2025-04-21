@@ -1,0 +1,11 @@
+Education School.csv 
+    It defines the educational requirements for students at different education levels. It includes the following columns:
+    Education: The education level, represented by a numerical identifier (note: Education levels should start from 0, representing preschool age children.).
+    School: The type of school (represented by a numerical identifier) where students at this education level are expected to study.
+    Duration: The number of years that students need to spend at the corresponding school for their education level.
+
+Education Progression.csv 
+    This table defines the probability of students advancing to the next education level after completing their current level of education.
+
+Education Progression Details.csv
+    This table defines the probability of a student transitioning from their current education level (Education1) to the next education level (Education2).

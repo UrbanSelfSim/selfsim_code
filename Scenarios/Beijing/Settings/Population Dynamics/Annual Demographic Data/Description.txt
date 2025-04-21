@@ -1,0 +1,8 @@
+Birth: the number of births in the virtual city.
+Death: the number of deaths in the virtual city.
+Immigration: the number of people immigrating into the virtual city.
+Emigration: the number of people emigrating from the virtual city.
+Marriage: the number of couples married in the virtual city.
+Divorce: the number of couples divorced in the virtual city.
+Unemployment: the unemployment rate in the virtual city.
+IncomeChange: the average income change of working people in the virtual city.

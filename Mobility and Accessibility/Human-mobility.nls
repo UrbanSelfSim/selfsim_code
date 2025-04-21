@@ -1,0 +1,1149 @@
+to export-daily-plan-files
+  ;export CBs with shopping service agents
+  let file-name-shopping (word "Mobility and Accessibility/ShoppingCB" year "year.csv")
+  let filename-shopping (Word "ShoppingCB" year "year.csv")
+  py:set "filename" filename-shopping
+  (py:run
+    "root_dir = os.getcwd()"
+    "for root, dirs, files in os.walk(root_dir):"
+    "  for file in files:"
+    "    if file == filename:"
+    "        file_path = os.path.join(root, file)"
+    "        os.remove(file_path)"
+  )
+  file-open file-name-shopping
+  file-print "CBID,Long,Lat"
+  ask CFBs with [count Businessmen with [rent-neighbor? myself and btype = 1] > 0]
+  [
+    file-print (word who ", " long ", " lat)
+  ]
+  file-close
+  
+  ;export CBs with leisure service agents
+  let file-name-leisure (word "Mobility and Accessibility/LeisureCB" year "year.csv")
+  let filename-leisure (Word "LeisureCB" year "year.csv")
+  py:set "filename" filename-leisure
+  (py:run
+    "root_dir = os.getcwd()"
+    "for root, dirs, files in os.walk(root_dir):"
+    "  for file in files:"
+    "    if file == filename:"
+    "        file_path = os.path.join(root, file)"
+    "        os.remove(file_path)"
+  )
+  file-open file-name-leisure
+  file-print "CBID,Long,Lat"
+  ask CFBs with [count Businessmen with [rent-neighbor? myself and btype = 1] > 0]
+  [
+    file-print (word who ", " long ", " lat)
+  ]
+  file-close
+end
+
+to-report Shopping-location-newplan [last-activity day-type]
+  ;select distance range
+  let range-lower 0
+  let range-upper 0
+  ifelse day-type = 1
+  [
+    ;weekday shopping distribution
+    let dis-range (list 2 5 10 20 50)
+    py:set "range" dis-range
+    py:set "prob" H-sho-loc-weekday
+    (py:run
+      "result = random.choices (range, prob)"
+    )
+    set range-upper item 0 py:runresult "result"
+    (ifelse
+      range-upper = 2 [set range-lower 0]
+      range-upper = 5 [set range-lower 2]
+      range-upper = 10 [set range-lower 5] 
+      range-upper = 20 [set range-lower 10]
+      range-upper = 50 [set range-lower 20]
+    )
+  ]
+  [
+    ;weekend shopping distribution
+    let dis-range (list 2 5 10 20 50)
+    py:set "range" dis-range
+    py:set "prob" H-sho-loc-weekend
+    (py:run
+      "result = random.choices (range, prob)"
+    )
+    set range-upper item 0 py:runresult "result"
+    (ifelse
+      range-upper = 2 [set range-lower 0]
+      range-upper = 5 [set range-lower 2]
+      range-upper = 10 [set range-lower 5] 
+      range-upper = 20 [set range-lower 10]
+      range-upper = 50 [set range-lower 20]
+    )
+  ]
+  ;select candidate CFBs
+  let candidate-CFBs up-to-n-of 100 CFBs with [count in-rent-neighbors with [btype = 1] > 0]
+  ;candidate CFBs calculate the distance between last location
+  ask candidate-CFBs [set my-distance distance last-activity]
+  ;Select a CF within the specified range. If no CF exists within the range, choose the nearest CF outside of it.
+  let target nobody
+  ifelse count candidate-CFBs with [my-distance <= range-upper and my-distance >= range-lower] > 0
+  [set target one-of candidate-CFBs with [my-distance <= range-upper and my-distance >= range-lower]]
+  [set target min-one-of candidate-CFBs [my-distance - (range-upper + range-lower) / 2]]
+  
+  ;select target businessman
+  let candidates businessmen with [rent-neighbor? target and btype = 1]
+  let candidate-shopping []
+  let candidate-shopping-prob []
+  ask candidates
+  [
+    set candidate-shopping lput who candidate-shopping 
+    set candidate-shopping-prob lput space candidate-shopping-prob
+  ]
+  py:set "candidateshopping" candidate-shopping
+  py:set "candidateshoppingprob" candidate-shopping-prob
+  (py:run
+    "result = random.choices (candidateshopping, candidateshoppingprob)"
+  )
+  let loc1 item 0 py:runresult "result"
+  report turtle loc1
+end
+
+to-report Leisure-location-newplan [last-activity day-type]
+  ;select distance range
+  let range-lower 0
+  let range-upper 0
+  ifelse day-type = 1
+  [
+    ;weekday shopping distribution
+    let dis-range (list 2 5 10 20 50)
+    py:set "range" dis-range
+    py:set "prob" H-lei-loc-weekday
+    (py:run
+      "result = random.choices (range, prob)"
+    )
+    set range-upper item 0 py:runresult "result"
+    (ifelse
+      range-upper = 2 [set range-lower 0]
+      range-upper = 5 [set range-lower 2]
+      range-upper = 10 [set range-lower 5] 
+      range-upper = 20 [set range-lower 10]
+      range-upper = 50 [set range-lower 20]
+    )
+  ]
+  [
+    ;weekend shopping distribution
+    let dis-range (list 2 5 10 20 50)
+    py:set "range" dis-range
+    py:set "prob" H-lei-loc-weekend
+    (py:run
+      "result = random.choices (range, prob)"
+    )
+    set range-upper item 0 py:runresult "result"
+    (ifelse
+      range-upper = 2 [set range-lower 0]
+      range-upper = 5 [set range-lower 2]
+      range-upper = 10 [set range-lower 5] 
+      range-upper = 20 [set range-lower 10]
+      range-upper = 50 [set range-lower 20]
+    )
+  ]
+  ;select candidate CFBs
+  let candidate-CFBs up-to-n-of 100 CFBs with [count in-rent-neighbors with [btype = 2] > 0]
+  ;candidate CFBs calculate the distance between last location
+  ask candidate-CFBs [set my-distance distance last-activity]
+  ;Select a CF within the specified range. If no CF exists within the range, choose the nearest CF outside of it.
+  let target nobody
+  ifelse count candidate-CFBs with [my-distance <= range-upper and my-distance >= range-lower] > 0
+  [set target one-of candidate-CFBs with [my-distance <= range-upper and my-distance >= range-lower]]
+  [set target min-one-of candidate-CFBs [my-distance - (range-upper + range-lower) / 2]]
+  
+  let candidates businessmen with [rent-neighbor? target and btype = 2]
+  let candidate-leisure []
+  let candidate-leisure-prob []
+  ask candidates [set candidate-leisure lput who candidate-leisure set candidate-leisure-prob lput space candidate-leisure-prob]
+  py:set "candidateleisure" candidate-leisure
+  py:set "candidateleisureprob" candidate-leisure-prob
+  (py:run
+    "result = random.choices (candidateleisure, candidateleisureprob)"
+  )
+  let loc1 item 0 py:runresult "result"
+  report turtle loc1
+end
+
+to generate-full-new-plans
+  ;code for generate a new daily plan
+  let num-weekday-act length chain-weekday
+  let my-household one-of households with [hhd = [hhd] of myself]
+  let my-residence one-of RFs with [link-neighbor? my-household]
+  let my-work nobody
+  let my-education nobody
+  if status = 1 [set my-education one-of turtles with [student-neighbor? myself]]
+  if status = 2 [set my-work one-of turtles with [employee-neighbor? myself]]
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  set plan-weekday []
+  set plan-weekend []
+  let i 1
+  while [i <= num-weekday-act]
+  [
+    let activity item (i - 1) chain-weekday
+    (ifelse 
+      activity = "home" [set plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence) plan-weekday]
+      activity = "work" [set plan-weekday lput (list "work" my-work [long] of my-work [lat] of my-work) plan-weekday]
+      activity = "education" [set plan-weekday lput (list "education" my-education [long] of my-education [lat] of my-education) plan-weekday]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) plan-weekday)
+        let target-shopping shopping-location-newplan last-activity 1
+        set plan-weekday lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) plan-weekday
+        create-shopping-with target-shopping
+        ask one-of my-shoppings with [other-end = target-shopping][set daytype 1]
+      ]
+      activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) plan-weekday)
+        let target-leisure leisure-location-newplan last-activity 1
+        set plan-weekday lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) plan-weekday
+        create-leisure-with target-leisure
+        ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  if length plan-weekday > 1 [set plan-weekday transport-mode-newplan plan-weekday 1 vehicle-owner]
+
+  
+  let num-weekend-act length chain-weekend
+  set i 1
+  while [i <= num-weekend-act]
+  [
+    let activity item (i - 1) chain-weekend
+    (ifelse 
+      activity = "home" [set plan-weekend lput (list "home" my-residence [long] of my-residence [lat] of my-residence) plan-weekend]
+      activity = "work" [set plan-weekend lput (list "work" my-work [long] of my-work [lat] of my-work) plan-weekend]
+      activity = "education" [set plan-weekend lput (list "education" my-education [long] of my-education [lat] of my-education) plan-weekend]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) plan-weekend)
+        let target-shopping shopping-location-newplan last-activity 2
+        set plan-weekend lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) plan-weekend
+        create-shopping-with target-shopping
+      ]
+      ;activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) plan-weekend)
+        let target-leisure leisure-location-newplan last-activity 2
+        set plan-weekend lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) plan-weekend
+        create-leisure-with target-leisure
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode on weekend
+  if length plan-weekend > 1 [set plan-weekend transport-mode-newplan plan-weekend 2 vehicle-owner]
+end
+
+to generate-typical-new-plan
+  ;code for generate a new daily plan
+  let num-weekday-act length chain-weekday
+  set plan-weekday []
+  let my-household one-of households with [hhd = [hhd] of myself]
+  let my-residence one-of RFs with [link-neighbor? my-household]
+  let my-work nobody
+  let my-education nobody
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  if status = 1 [set my-education one-of turtles with [student-neighbor? myself]]
+  if status = 2 [set my-work one-of turtles with [employee-neighbor? myself]]
+  let i 1
+  while [i <= num-weekday-act]
+  [
+    let activity item (i - 1) chain-weekday
+    (ifelse 
+      activity = "home" [set plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence) plan-weekday]
+      activity = "work" [set plan-weekday lput (list "work" my-work [long] of my-work [lat] of my-work) plan-weekday]
+      activity = "education" [set plan-weekday lput (list "education" my-education [long] of my-education [lat] of my-education) plan-weekday]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) plan-weekday)
+        let target-shopping shopping-location-newplan last-activity 1
+        set plan-weekday lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) plan-weekday
+        create-shopping-with target-shopping
+        ask one-of my-shoppings with [other-end = target-shopping][set daytype 1]
+      ]
+      ;activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) plan-weekday)
+        let target-leisure leisure-location-newplan last-activity 1
+        set plan-weekday lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) plan-weekday
+        create-leisure-with target-leisure
+        ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  if length plan-weekday > 1 [set plan-weekday transport-mode-newplan plan-weekday 1 vehicle-owner]
+end
+
+to-report transport-mode-newplan [plan day-type vo]
+  let i 0
+  let num-act length plan
+  ifelse num-act > 1
+  [
+    while [i < num-act - 1]
+    [
+      let activity item i plan
+      let loc1 item 1 (item i plan)
+      let loc2 item 1 (item (i + 1) plan)
+      let dis 0
+      ask loc1 [set dis distance loc2]
+      let new-mode 0
+      ifelse day-type = 1 [set new-mode randomly-choose-transport-mode dis 1 vo][set new-mode randomly-choose-transport-mode dis 2 vo]
+      set activity lput new-mode activity
+      set plan replace-item i plan activity
+      set i i + 1
+    ]
+  ]
+  [
+    let activity item 0 plan
+    set activity lput " " activity
+    set plan replace-item 0 plan activity
+  ]
+  report plan
+end
+
+to education-change [new-loc]
+  let num-act length plan-weekday 
+  let old-plan plan-weekday
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  let i 0
+  ;Step 1: replace the old work/education location with the new one
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    if item 0 activity = "education" 
+    [
+      set activity (list "education" new-loc [long] of new-loc [lat] of new-loc)
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    if item 0 activity = "home"
+    [
+      if length activity = 5
+      [
+        set activity remove-item 4 activity
+        set plan-weekday replace-item i plan-weekday activity
+      ]
+    ]
+    set i i + 1
+  ]
+  
+  ;Step 2: determine shopping and leisure locations 
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    let CB-shop-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    let CB-leisure-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    if item 0 activity = "shopping" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-shop-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-shop-candidates [abs my-distance]   
+      let target-shops businessmen with [rent-neighbor? target and btype = 1]
+      let target-shops-id []
+      let target-shops-prob []
+      ask target-shops [set target-shops-id lput who target-shops-id set target-shops-prob lput space target-shops-prob]
+      py:set "target" target-shops-id
+      py:set "targetprob" target-shops-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-shop businessman item 0 py:runresult "result"
+      set activity (list "shopping" target-shop [long] of target-shop [lat] of target-shop)
+      create-shopping-with target-shop
+      ask one-of my-shoppings with [other-end = target-shop][set daytype 1]
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    if item 0 activity = "leisure" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-leisure-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-leisure-candidates [abs my-distance]   
+      let target-leisures businessmen with [rent-neighbor? target and btype = 1]
+      let target-leisures-id []
+      let target-leisures-prob []
+      ask target-leisures [set target-leisures-id lput who target-leisures-id set target-leisures-prob lput space target-leisures-prob]
+      py:set "target" target-leisures-id
+      py:set "targetprob" target-leisures-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-leisure businessman item 0 py:runresult "result"
+      create-leisure-with target-leisure
+      ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+      set activity (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure)
+      set plan-weekday replace-item i plan-weekday activity
+    ]   
+    set i i + 1
+  ]
+  
+  ;step 3: determine transport mode
+  if length plan-weekday > 1 [set plan-weekday transport-mode-extplan old-plan plan-weekday 1 vehicle-owner]
+  
+ ;是否出现多次交通
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    if length activity > 5
+    [
+      print (word "wrong transport person " who)
+    ]
+    set i i + 1
+  ]
+end
+
+to work-change [new-loc]
+  let num-act length plan-weekday 
+  let old-plan plan-weekday
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  let i 0
+  ;Step 1: replace the old work/education location with the new one
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    if item 0 activity = "work" 
+    [
+      let tra-mod item 3 activity 
+      set activity (list "work" new-loc [long] of new-loc [lat] of new-loc)
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    if item 0 activity = "home" and length activity = 5
+    [
+      set activity remove-item 4 activity
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    set i i + 1
+  ]
+  
+  ;Step 2: determine shopping and leisure locations 
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    let CB-shop-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    let CB-leisure-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    if item 0 activity = "shopping" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-shop-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-shop-candidates [abs my-distance]   
+      let target-shops businessmen with [rent-neighbor? target and btype = 1]
+      let target-shops-id []
+      let target-shops-prob []
+      ask target-shops [set target-shops-id lput who target-shops-id set target-shops-prob lput space target-shops-prob]
+      py:set "target" target-shops-id
+      py:set "targetprob" target-shops-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-shopping businessman item 0 py:runresult "result"
+      set activity (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping)
+      set plan-weekday replace-item i plan-weekday activity
+      create-shopping-with target-shopping
+      ask one-of my-shoppings with [other-end = target-shopping][set daytype 1]
+    ]
+    if item 0 activity = "leisure" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-leisure-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-leisure-candidates [abs my-distance]   
+      let target-leisures businessmen with [rent-neighbor? target and btype = 1]
+      let target-leisures-id []
+      let target-leisures-prob []
+      ask target-leisures [set target-leisures-id lput who target-leisures-id set target-leisures-prob lput space target-leisures-prob]
+      py:set "target" target-leisures-id
+      py:set "targetprob" target-leisures-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-leisure businessman item 0 py:runresult "result"
+      set activity (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure)
+      set plan-weekday replace-item i plan-weekday activity
+      create-leisure-with target-leisure
+      ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+    ]   
+    set i i + 1
+  ]
+  
+  ;step 3: determine transport mode
+  if length plan-weekday > 1 [set plan-weekday transport-mode-extplan old-plan plan-weekday 1 vehicle-owner]
+end
+
+to residential-change-full [new-loc vo]
+  ;update daily plan on weekday
+  let num-act length plan-weekday 
+  let old-plan plan-weekday
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  let i 0
+  ;Step 1: replace the old residential location with the new one
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    if item 0 activity = "home" 
+    [
+      let tra-mod item 3 activity set activity (list "home" new-loc [long] of new-loc [lat] of new-loc)
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    set i i + 1
+  ]
+  
+  ;Step 2: determine shopping and leisure locations 
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    let CB-shop-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    let CB-leisure-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    if item 0 activity = "shopping" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-shop-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-shop-candidates [abs my-distance]   
+      let target-shops businessmen with [rent-neighbor? target and btype = 1]
+      let target-shops-id []
+      let target-shops-prob []
+      ask target-shops [set target-shops-id lput who target-shops-id set target-shops-prob lput space target-shops-prob]
+      py:set "target" target-shops-id
+      py:set "targetprob" target-shops-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-shopping businessman item 0 py:runresult "result"
+      set activity (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping)
+      set plan-weekday replace-item i plan-weekday activity
+      create-shopping-with target-shopping
+      ask one-of my-shoppings with [other-end = target-shopping][set daytype 1]
+    ]
+    if item 0 activity = "leisure" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-leisure-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-leisure-candidates [abs my-distance]   
+      let target-leisures businessmen with [rent-neighbor? target and btype = 1]
+      let target-leisures-id []
+      let target-leisures-prob []
+      ask target-leisures [set target-leisures-id lput who target-leisures-id set target-leisures-prob lput space target-leisures-prob]
+      py:set "target" target-leisures-id
+      py:set "targetprob" target-leisures-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-leisure businessman item 0 py:runresult "result"
+      set activity (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure)
+      set plan-weekday replace-item i plan-weekday activity
+      create-leisure-with target-leisure
+      ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+    ]   
+    set i i + 1
+  ]
+  ;step 3: determine transport mode
+  if length plan-weekday > 1 [set plan-weekday transport-mode-extplan old-plan plan-weekday 1 vehicle-owner]
+  
+  
+  ;update daily plan on weekend
+  set num-act length plan-weekend 
+  set old-plan plan-weekend
+  set i 0
+  ;Step 1: replace the old work/education location with the new one
+  while [i < num-act]
+  [
+    let activity item i plan-weekend
+    if item 0 activity = "home" 
+    [
+      let tra-mod item 3 activity set activity (list "home" new-loc [long] of new-loc [lat] of new-loc)
+      set plan-weekend replace-item i plan-weekend activity
+    ]
+    set i i + 1
+  ]
+  
+  ;Step 2: determine shopping and leisure locations 
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekend
+    let CB-shop-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    let CB-leisure-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    if item 0 activity = "shopping" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item 1 old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 0 activity
+      let pre-activity-loc1 item 0 (item (i - 1) plan-weekend)
+      let nex-activity-loc1 item 0 (item (i + 1) plan-weekend)
+      ask CB-shop-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-shop-candidates [abs my-distance]   
+      let target-shops businessmen with [rent-neighbor? target and btype = 1]
+      let target-shops-id []
+      let target-shops-prob []
+      ask target-shops [set target-shops-id lput who target-shops-id set target-shops-prob lput space target-shops-prob]
+      py:set "target" target-shops-id
+      py:set "targetprob" target-shops-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-shopping businessman item 0 py:runresult "result"
+      set activity (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping)
+      set plan-weekend replace-item i plan-weekend activity
+      create-shopping-with target-shopping
+      ask one-of my-shoppings with [other-end = target-shopping][set daytype 2]
+    ]
+    if item 0 activity = "leisure" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 0 (item 1 old-plan)
+      let pre-activity-loc item 0 (item (i - 1) old-plan)
+      let nex-activity-loc item 0 (item (i + 1) old-plan)
+      let pre-dis distancexy pre-activity-loc cur-loc
+      let nex-dis distancexy nex-activity-loc cur-loc
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 0 activity
+      let pre-activity-loc1 item 0 (item (i - 1) plan-weekend)
+      let nex-activity-loc1 item 0 (item (i + 1) plan-weekend)
+      ask CB-leisure-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-leisure-candidates [abs my-distance]   
+      let target-leisures businessmen with [rent-neighbor? target and btype = 1]
+      let target-leisures-id []
+      let target-leisures-prob []
+      ask target-leisures [set target-leisures-id lput who target-leisures-id set target-leisures-prob lput space target-leisures-prob]
+      py:set "target" target-leisures-id
+      py:set "targetprob" target-leisures-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-leisure businessman item 0 py:runresult "result"
+      set activity (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure)
+      set plan-weekend replace-item i plan-weekend activity
+      create-leisure-with target-leisure
+      ask one-of my-leisures with [other-end = target-leisure][set daytype 2]
+    ]   
+    set i i + 1
+  ]
+  ;step 3: determine transport mode
+  if length plan-weekend > 1 [ set plan-weekend transport-mode-extplan old-plan plan-weekend 2 vehicle-owner]
+end
+
+to residential-change-typical [new-loc vo] 
+  ;update daily plan on weekday
+  let num-act length plan-weekday 
+  let old-plan plan-weekday
+  ask my-shoppings [die]
+  ask my-leisures [die]
+  let i 0
+  ;Step 1: replace the old work/education location with the new one
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    if item 0 activity = "home" 
+    [
+      set activity (list "home" new-loc [long] of new-loc [lat] of new-loc)
+      set plan-weekday replace-item i plan-weekday activity
+    ]
+    if item 0 activity = "education"
+    [
+      if length activity = 5
+      [
+        set activity remove-item 4 activity
+        set plan-weekday replace-item i plan-weekday activity
+      ]
+    ]
+    if item 0 activity = "work"
+    [
+      if length activity = 5
+      [
+        set activity remove-item 4 activity
+        set plan-weekday replace-item i plan-weekday activity
+      ]
+    ]
+    
+    set i i + 1
+  ]
+  
+  ;Step 2: determine shopping and leisure locations 
+  set i 0
+  while [i < num-act]
+  [
+    let activity item i plan-weekday
+    let CB-shop-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    let CB-leisure-candidates up-to-n-of 100 CFBs with [count rent-neighbors with [btype = 1] > 0]
+    if item 0 activity = "shopping" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item i old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-shop-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-shop-candidates [abs my-distance]   
+      let target-shops businessmen with [rent-neighbor? target and btype = 1]
+      let target-shops-id []
+      let target-shops-prob []
+      ask target-shops [set target-shops-id lput who target-shops-id set target-shops-prob lput space target-shops-prob]
+      py:set "target" target-shops-id
+      py:set "targetprob" target-shops-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-shopping businessman item 0 py:runresult "result"
+      set activity (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping)
+      set plan-weekday replace-item i plan-weekday activity
+      create-shopping-with target-shopping
+      ask one-of my-shoppings with [other-end = target-shopping][set daytype 1]
+    ]
+    if item 0 activity = "leisure" 
+    [
+      ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
+      let cur-loc item 1 (item 1 old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
+      
+      ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekday)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekday)
+      ask CB-leisure-candidates
+      [
+        set my-distance distance pre-activity-loc1
+        set my-distance my-distance + distance nex-activity-loc1
+        set my-distance my-distance - (pre-dis + nex-dis)
+      ]
+      let target min-one-of CB-leisure-candidates [abs my-distance]   
+      let target-leisures businessmen with [rent-neighbor? target and btype = 1]
+      let target-leisures-id []
+      let target-leisures-prob []
+      ask target-leisures [set target-leisures-id lput who target-leisures-id set target-leisures-prob lput space target-leisures-prob]
+      py:set "target" target-leisures-id
+      py:set "targetprob" target-leisures-prob
+      (py:run
+        "result = random.choices (target, targetprob)"
+      )
+      let target-leisure businessman item 0 py:runresult "result"
+      set activity (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure)
+      set plan-weekday replace-item i plan-weekday activity
+      create-leisure-with target-leisure
+      ask one-of my-leisures with [other-end = target-leisure][set daytype 1]
+    ]   
+    set i i + 1
+  ]
+  ;step 3: determine transport mode
+  set plan-weekday transport-mode-extplan old-plan plan-weekday 1 vehicle-owner
+end
+
+to-report transport-mode-extplan [old-plan new-plan day-type vo]
+  let num-act length old-plan
+  if num-act > 1
+  [
+    let i 0 
+    while [i < num-act - 1]
+    [
+      ;calculate the distance between two activites in old daily plan
+      let loc1 item 1 (item i old-plan)
+      let loc2 item 1 (item (i + 1) old-plan)
+      let dis1 0
+      ask loc1 [set dis1 distance loc2]
+      let mode1 item 4 (item i old-plan)
+      ;calculate the distance between two activites in updated daily plan
+      let act item i new-plan
+      let loc3 item 1 act
+      let loc4 item 1 (item (i + 1) new-plan)
+      let dis2 0
+      ask loc3 [set dis2 distance loc4]
+      let mode2 0
+      (ifelse
+        dis1 <= 2 [ifelse dis2 < 2 [set mode2 mode1][set mode2 randomly-choose-transport-mode dis2 day-type vo]]
+        dis1 > 2 and dis1 <= 5 [ifelse dis2 > 2 and dis2 <= 5 [set mode2 mode1][set mode2 randomly-choose-transport-mode dis2 day-type vo]]
+        dis1 > 5 and dis1 <= 10 [ifelse dis2 > 5 and dis2 <= 10 [set mode2 mode1][set mode2 randomly-choose-transport-mode dis2 day-type vo]]
+        dis1 > 10 and dis1 <= 20 [ifelse dis2 > 10 and dis2 <= 20 [set mode2 mode1][set mode2 randomly-choose-transport-mode dis2 day-type vo]]
+        ;dis1 > 20
+        [ifelse dis2 > 20 [set mode2 mode1][set mode2 randomly-choose-transport-mode dis2 day-type vo]]
+      )
+      set act lput mode2 act
+      set new-plan replace-item i new-plan act
+      set i i + 1
+    ]
+  ]
+  report new-plan
+end
+
+to-report randomly-choose-transport-mode [dis day-type vo]
+  let mode-prob []
+  (ifelse
+    dis <= 2 and vo = 1 and day-type = 1 [set mode-prob item 0 H-mode-vo-weekday] 
+    dis <= 2 and vo = 0 and day-type = 1 [set mode-prob item 0 H-mode-nvo-weekday]
+    dis > 2 and dis <= 5 and vo = 1 and day-type = 1 [set mode-prob item 1 H-mode-vo-weekday] 
+    dis > 2 and dis <= 5 and vo = 0 and day-type = 1 [set mode-prob item 1 H-mode-nvo-weekday]  
+    dis > 5 and dis <= 10 and vo = 1 and day-type = 1 [set mode-prob item 2 H-mode-vo-weekday] 
+    dis > 5 and dis <= 10 and vo = 0 and day-type = 1 [set mode-prob item 2 H-mode-nvo-weekday]  
+    dis > 10 and dis <= 20 and vo = 1 and day-type = 1 [set mode-prob item 3 H-mode-vo-weekday] 
+    dis > 10 and dis <= 20 and vo = 0 and day-type = 1 [set mode-prob item 3 H-mode-nvo-weekday]  
+    dis > 20 and vo = 1 and day-type = 1 [set mode-prob item 4 H-mode-vo-weekday] 
+    dis > 20 and vo = 0 and day-type = 1 [set mode-prob item 4 H-mode-nvo-weekday]
+    dis <= 2 and vo = 1 and day-type = 1 [set mode-prob item 0 H-mode-vo-weekday] 
+    dis <= 2 and vo = 0 and day-type = 1 [set mode-prob item 0 H-mode-nvo-weekday]
+    dis > 2 and dis <= 5 and vo = 1 and day-type = 2 [set mode-prob item 1 H-mode-vo-weekend] 
+    dis > 2 and dis <= 5 and vo = 0 and day-type = 2 [set mode-prob item 1 H-mode-nvo-weekend]  
+    dis > 5 and dis <= 10 and vo = 1 and day-type = 2 [set mode-prob item 2 H-mode-vo-weekend] 
+    dis > 5 and dis <= 10 and vo = 0 and day-type = 2 [set mode-prob item 2 H-mode-nvo-weekend]  
+    dis > 10 and dis <= 20 and vo = 1 and day-type = 2 [set mode-prob item 3 H-mode-vo-weekend] 
+    dis > 10 and dis <= 20 and vo = 0 and day-type = 2 [set mode-prob item 3 H-mode-nvo-weekend]  
+    dis > 20 and vo = 1 and day-type = 2 [set mode-prob item 4 H-mode-vo-weekend] 
+    dis > 20 and vo = 0 and day-type = 2 [set mode-prob item 4 H-mode-nvo-weekend]
+  )
+  let mode-choice (list "Bus" "Private Vehicle"  "Subway"  "Taxi"  "Two_wheel"  "Walk"  "For-Hire Vehicle")
+  py:set "choice" mode-choice
+  py:set "prob" mode-prob
+  (py:run
+    "result = random.choices (choice, prob)"
+  )
+  let tran-mode item 0 py:runresult "result"
+  if tran-mode = "\tSubway" [set tran-mode "Subway"]
+  report tran-mode
+end
+
+to generate-dailyplan-new-households
+  ;file-open (word "Mobility and Accessibility/Immigration" year "year.csv")
+  (ifelse
+    dailyplan = "Simple" []
+    dailyplan = "Typical"
+    [
+      ;file-print "PID, Weekday"
+      ask people with [color = black]
+      [
+        generate-typical-new-plan
+        ;file-print (word pid "," plan-weekday)
+        set color white
+      ]
+    ]
+    dailyplan = "Full"
+    [
+      file-print "PID, Weekday, Weekend"
+      ask people with [color = black]
+      [
+        generate-full-new-plans
+        ;file-print (word pid "," plan-weekday "," plan-weekend)
+        set color white
+      ]
+    ])
+  file-close
+end
+
+to generate-virtual-res-typical-plan [candidate]
+  ;code for generate a normal virtual new daily plan for residential facility candidate
+  let num-weekday-act length chain-weekday
+  let my-household one-of households with [hhd = [hhd] of myself]
+  set vir-plan-weekday []
+  
+  let my-work nobody
+  let my-education nobody
+  if status = 1 [set my-education one-of turtles with [student-neighbor? myself]]
+  if status = 2 [set my-work one-of turtles with [employee-neighbor? myself]]
+  let i 1
+  while [i <= num-weekday-act]
+  [
+    let activity item (i - 1) chain-weekday
+    (ifelse 
+      activity = "home" [set vir-plan-weekday lput (list "home" candidate [long] of candidate [lat] of candidate) vir-plan-weekday]
+      activity = "work" [set vir-plan-weekday lput (list "work"my-work [long] of my-work [lat] of my-work) vir-plan-weekday]
+      activity = "education" [set vir-plan-weekday lput (list "education" my-education [long] of my-education [lat] of my-education) vir-plan-weekday]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-shopping shopping-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) vir-plan-weekday
+      ]
+      ;activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-leisure leisure-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) vir-plan-weekday
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  set vir-plan-weekday transport-mode-newplan vir-plan-weekday 1 vehicle-owner
+end
+
+
+to generate-virtual-firm-typical-plan [candidate]
+  ;code for generate a typical virtual new daily plan for office facility candidate
+  let num-weekday-act length chain-weekday
+  let my-household one-of households with [hhd = [hhd] of myself]
+  set vir-plan-weekday []
+  let my-residence one-of RFs with [link-neighbor? my-household]
+  let i 1
+  while [i <= num-weekday-act]
+  [
+    let activity item (i - 1) chain-weekday
+    (ifelse 
+      activity = "home" [set vir-plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence) vir-plan-weekday]
+      activity = "work" [set vir-plan-weekday lput (list "work" candidate [long] of candidate [lat] of candidate) vir-plan-weekday]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-shopping shopping-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) vir-plan-weekday
+      ]
+      activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-leisure leisure-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) vir-plan-weekday
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  set vir-plan-weekday transport-mode-newplan vir-plan-weekday 1 vehicle-owner
+end
+
+to generate-virtual-res-full-plan [candidate]
+  ;code for generate a full virtual new daily plan for residential facility candidate
+  let num-weekday-act length chain-weekday
+  let my-household one-of households with [hhd = [hhd] of myself]
+  set vir-plan-weekday []
+  
+  let my-work nobody
+  let my-education nobody
+  if status = 1 [set my-education one-of turtles with [student-neighbor? myself]]
+  if status = 2 [set my-work one-of turtles with [employee-neighbor? myself]]
+  let i 1
+  while [i <= num-weekday-act]
+  [
+    let activity item (i - 1) chain-weekday
+    (ifelse 
+      activity = "home" [set vir-plan-weekday lput (list "home" candidate [long] of candidate [lat] of candidate) vir-plan-weekday]
+      activity = "work" [set vir-plan-weekday lput (list "work" my-work [long] of my-work [lat] of my-work) vir-plan-weekday]
+      activity = "education" [set vir-plan-weekday lput (list "education" my-education [long] of my-education [lat] of my-education) vir-plan-weekday]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-shopping shopping-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) vir-plan-weekday
+      ]
+      ;activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekday)
+        let target-leisure leisure-location-newplan last-activity 1
+        set vir-plan-weekday lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) vir-plan-weekday
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  set vir-plan-weekday transport-mode-newplan vir-plan-weekday 1 vehicle-owner
+  
+  let num-weekend-act length chain-weekend
+  set vir-plan-weekend []
+  set i 1
+  while [i <= num-weekend-act]
+  [
+    let activity item (i - 1) chain-weekend
+    (ifelse 
+      activity = "home" [set vir-plan-weekend lput (list "home" candidate [long] of candidate [lat] of candidate) vir-plan-weekend]
+      activity = "work" [set vir-plan-weekend lput (list "work" my-work [long] of my-work [lat] of my-work) vir-plan-weekend]
+      activity = "education" [set vir-plan-weekend lput (list "education" my-education [long] of my-education [lat] of my-education) vir-plan-weekend]
+      activity = "shopping" 
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekend)
+        let target-shopping shopping-location-newplan last-activity 2
+        set vir-plan-weekend lput (list "shopping" target-shopping [long] of target-shopping [lat] of target-shopping) vir-plan-weekend
+      ]
+      ;activity = "leisure"
+      [
+        let last-activity item 1 (item (i - 2) vir-plan-weekend)
+        let target-leisure leisure-location-newplan last-activity 2
+        set vir-plan-weekend lput (list "leisure" target-leisure [long] of target-leisure [lat] of target-leisure) vir-plan-weekend
+      ]
+    )
+    set i i + 1
+  ]
+  
+  ;determine transportation mode
+  set vir-plan-weekend transport-mode-newplan vir-plan-weekend 2 vehicle-owner
+end
+
+;This function is used to select a new businessman for a shopping or leisure activity when the original shopping or leisure activity location is closed.
+to-report find-a-new-businessman [pre-act cur-act nex-act act-type]
+  let candidate-CB up-to-n-of 100 CFBs with [count businessmen with [rent-neighbor? myself and btype = act-type] > 0]
+  let dis1 0
+  let dis2 0
+  ask pre-act [set dis1 distance cur-act]
+  ask nex-act [set dis2 distance cur-act]
+  ask candidate-CB
+  [
+    let dis3 distance pre-act
+    let dis4 distance nex-act
+    set my-distance dis3 + dis4 - dis1 - dis2
+  ]
+  let target min-one-of candidate-CB [my-distance]
+  let candidate-bus businessmen with [rent-neighbor? target and btype = act-type]
+  let candidate-ID []
+  let candidate-prob []
+  ask candidate-bus [set candidate-ID lput who candidate-ID set candidate-prob lput space candidate-prob]
+  py:set "CandidatesID" candidate-ID
+  py:set "CandidatesProb" candidate-prob
+  (py:run
+    "result = random.choices (CandidatesID, CandidatesProb)"
+  )
+  let ID1 item 0 py:runresult "result"
+  report turtle ID1
+end

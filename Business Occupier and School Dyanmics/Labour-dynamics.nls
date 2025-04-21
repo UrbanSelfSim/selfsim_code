@@ -1,0 +1,173 @@
+;The Labor Dynamics Model simulates the process of labor allocation, including the process of employment and unemployment.
+;Firm agents, businessman agents, and school agents are the agents that provide jobs. 
+;Due to the dynamic birth, growth, and closure of firm agents, businessman agents, and school agents, the number of available jobs in the market fluctuates every simulation year. 
+;Before the simulation starts, each firm agent, businessman agent, and school agent first evaluate their employment situation by comparing the number of jobs it can provide with the number of employees it currently has. 
+;Based on this comparison, the model updates the required number of employees for each entity and adjusts their employment status accordingly.
+
+
+to labour-dynamics
+  ;Temporally using color to label people
+  ;Blue: employee-unemployee
+  ;Yellow: unemployee-employee
+  ;Red: working location change
+  
+  ask firms [set firm-size count in-employee-neighbors]
+  ask schools [set school-size count in-employee-neighbors]
+  ask businessmen [set busi-size count in-employee-neighbors]
+  ask firms with [firm-size > emp-req]
+  [
+    ask n-of (firm-size - emp-req) people with [employee-neighbor? myself] 
+    [
+      ask my-employees [die]
+      set status 3
+      set welong 0
+      set welat 0
+      if color != black [set color blue]
+    ]
+    
+  ]
+  ask schools with [school-size > emp-req]
+  [
+    ask n-of (school-size - emp-req) people with [employee-neighbor? myself] 
+    [
+      ask my-employees [die]
+      set status 3
+      set welong 0
+      set welat 0
+      if color != black [set color blue]
+    ]
+  ]
+  ask businessmen with [busi-size > emp-req]
+  [
+    ask n-of (busi-size - emp-req) people with [employee-neighbor? myself] 
+    [
+      ask my-employees [die]
+      set status 3
+      set welong 0
+      set welat 0
+      if color != black [set color blue]
+    ]
+  ]
+  
+  while [count people with [status = 3] > 0 and (count firms with [count in-employee-neighbors < emp-req] > 0 or count schools with [count in-employee-neighbors < emp-req] > 0 or count businessmen with [count in-employee-neighbors < emp-req] > 0)]
+  [
+    let target nobody
+    let candidates up-to-n-of 100 turtles with [(is-firm? self or is-school? self or is-businessman? self) and count in-employee-neighbors < emp-req]
+    ask one-of people with [status = 3]
+    [
+      if color = black or (color = white and status = 3) [set dis-cur [dis-cur] of one-of people with [color != black and status = 2]]
+      ask candidates [set dis-can distance myself - [dis-cur] of myself]
+      set target min-one-of candidates [dis-can]
+      create-employee-with target
+      set status 2
+      if color = blue [set color red] ;change work location
+      if color = white [set color yellow] ;from unemployee to employee
+      set welong [long] of target
+      set welat [lat] of target
+      set dis-cur distance target
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+    ]
+  ]
+  
+  ;update income
+  ask people with [color = blue][set income 0]
+  ask people with [color = yellow][set income random-normal (mean [income] of people with [status = 2]) 1 if income < P-inc-min [set income P-inc-min]]  
+  
+  ;update human mobility  
+  ;update daily plan of people whose working status changes
+  ask people with [color = blue or color = yellow]
+  [
+    set chain-weekday []
+    set chain-weekend []
+    set plan-weekday [] 
+    set plan-weekend []
+  ]
+  ask people with [color = blue]
+  [
+    (ifelse
+      DailyPlan = "Full" 
+      [
+        let target one-of people with [color = white and (status = 3 or status = 4) and (length chain-weekday != 0 or length chain-weekend != 0)]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-full-new-plans
+      ]
+      DailyPlan = "Typical" 
+      [
+        generate-typical-new-plan
+        let target one-of people with [color = white and (status = 3 or status = 4) and (length chain-weekday != 0 or length chain-weekday != 0)]
+        set chain-weekday [chain-weekday] of target
+      ]
+      DailyPlan = "Simple" []
+    )
+    set color white
+  ]
+  file-close
+  
+;  if dailyplan != "Simple"
+;  [
+;    file-open (word "Mobility and Accessibility/Unemptoemp" year "year.csv")
+;    file-print "PID,Weekday,Weekend"
+;  ]
+  ask people with [color = yellow]
+  [
+    (ifelse
+      DailyPlan = "Full" 
+      [
+        let target one-of people with [color = white and status = 2]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-full-new-plans
+        ;file-print (word PID "," Plan-Weekday "," Plan-weekend)
+      ]
+      DailyPlan = "Typical" 
+      [
+        let target one-of people with [color = white and status = 2]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-typical-new-plan
+        ;file-print (word PID "," Plan-Weekday)
+      ]
+      DailyPlan = "Simple" []
+    )
+    
+    
+    set color white
+  ]
+  file-close
+  
+  ;update daily plan of people whose working location change
+;  if DailyPlan != "Simple"
+;  [
+;    file-open (word "Mobility and Accessibility/WorkChange" year "year.csv")
+;    file-print "PID, Weekday"
+;  ]
+  ask people with [color = red]
+  [
+    if DailyPlan != "Simple" 
+    [
+      work-change one-of in-employee-neighbors 
+      ;file-print (word PID "," Plan-Weekday)
+    ]
+    set color white
+  ]
+  file-close
+  
+  ask firms with [count in-employee-neighbors = 0][die]
+  
+  
+  
+  ask people with [color = black and age > 2]
+  [
+    let target one-of people with [chain-weekday != 0 and color = white and status = [status] of myself]
+    set chain-weekday [chain-weekday] of target
+    set chain-weekend [chain-weekend] of target
+  ]
+  
+  print "Labour dynamics finished"
+end
+
+
+
+
+

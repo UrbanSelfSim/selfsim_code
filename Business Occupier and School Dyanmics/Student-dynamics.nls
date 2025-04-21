@@ -1,0 +1,139 @@
+;This file contains three key models for simulating students' school assignment and response to educational dynamics in the SelfSim framework:
+;student-higher-school-choice assigns students to appropriate schools based on their education level and school availability. It ensures spatial proximity is considered and initializes education durations accordingly.
+;student-education-change handles student reallocation when a school is closed, probabilistically selecting new schools of the same type.
+;kindergarten-student generates daily activity plans for students who have just entered kindergarten.
+
+
+to student-higher-school-choice
+  ask people with [status = 5][set color yellow] ;mark these people with yellow
+  ;Assign a school to each student and initialize the education duration
+  ask schools [set available-space capacity - count in-student-neighbors]
+  let number2 length P-edu-sch
+  while [number2 > 0]  ;Gradually assign students at each education level to corresponding schools.
+  [
+    set number2 number2 - 1
+    let edu-sch item number2 P-edu-sch
+    let edu item 0 edu-sch
+    let sch item 1 edu-sch
+    let dur item 2 edu-sch
+    
+    if edu != 0
+    [
+      while [count people with [status = 5 and count in-student-neighbors = 0 and education = edu] > 0] ;If there are students in the environment who have not been assigned to a school, execute the following code.
+      [
+        ;If there are schools with available spots, select from those schools. If all schools of that type are full, select from all schools.
+        let candidates nobody
+        ifelse count schools with [stype = sch and available-space > 0] > 0 [set candidates schools with [stype = sch and available-space > 0]][set candidates schools with [stype = sch]]
+        let target nobody
+        ask one-of people with [status = 5 and count in-student-neighbors = 0 and education = edu]
+        [
+          if color = black or education = 1 [set dis-cur [dis-cur] of one-of people with [status = 1 and color != black and education != 1]]
+          ask candidates [set dis-can (distance myself - [dis-cur] of myself)]
+          set target min-one-of candidates [abs (dis-can)]
+          set status 1
+          set edu-year-required dur set edu-year 1
+          create-student-with target
+          set welong [long] of target
+          set welat [lat] of target
+          set dis-cur distance target
+          ask target [set available-space available-space - 1]
+        ]
+      ]
+    ]
+  ]
+  
+  
+  ask people with [color = yellow]
+  [
+    if dailyplan != "Simple"
+    [
+      ifelse education = 1
+      [
+        let target one-of people with [status = 1 and length chain-weekday != 0]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        set plan-weekday [plan-weekday] of target
+        set plan-weekend [plan-weekend] of target
+        ifelse dailyplan = "Typical"[generate-typical-new-plan][generate-full-new-plans]
+      ]
+      [
+        let new-loc one-of schools with [student-neighbor? myself]
+        education-change new-loc
+      ]
+    ]
+    set color white
+  ]
+  
+end
+
+;Find a new school of the same type for students after a school closure.
+to-report student-education-change [school-type]
+  ifelse count schools with [stype = school-type and available-space > 0 and color = white] > 0
+  [
+    let sum-spaces sum [available-space] of schools with [stype = school-type and available-space > 0 and color = white]
+    let school-list []
+    let probs []
+    ask schools with [stype = school-type and available-space > 0 and color = white][set school-list lput SchID school-list set probs lput (available-space / sum-spaces) probs]
+    py:set "schoollist" school-list
+    py:set "probs" probs
+    (py:run
+      "result = random.choices (schoollist, probs)"
+    )
+    report one-of schools with [SchID = item 0 py:runresult "result"]
+  ]
+  [
+    let sum-capacity sum [capacity] of schools with [stype = school-type and color = white]
+    let school-list []
+    let probs []
+    ask schools with [stype = school-type and color = white][set school-list lput SchID school-list set probs lput (capacity / sum-capacity) probs]
+    py:set "list" school-list
+    py:set "probs" probs
+    (py:run
+      "result = random.choices (list, probs)"
+    )
+    report one-of schools with [SchID = item 0 py:runresult "result"]
+  ]
+end
+
+to kindergarten-student
+  let file-name (word "Mobility and Accessibility/kindergarten" year "year.csv")
+  let filename (Word "kindergarten" year "year.csv")
+  py:set "filename" filename
+  (py:run
+    "root_dir = os.getcwd()"
+    "for root, dirs, files in os.walk(root_dir):"
+    "  for file in files:"
+    "    if file == filename:"
+    "        file_path = os.path.join(root, file)"
+    "        os.remove(file_path)"
+  )
+  file-open (word "Mobility and Accessibility/kindergarten" year "year.csv")
+  (ifelse 
+    DailyPlan = "Simple"[]
+    DailyPlan = "Typical" 
+    [
+      file-print "PID, Weekday"
+      ask people with [color = yellow and education = 1]
+      [
+        let target one-of people with [status = 1 and color = white]
+        set chain-weekday [chain-weekday] of target
+        generate-typical-new-plan
+        file-print (word pid "," plan-weekday)
+        set color white
+      ]
+    ]
+    DailyPlan = "Full"
+    [
+      file-print "PID, Weekday, Weekend"
+      ask people with [color = yellow and education = 1]
+      [
+        let target one-of people with [status = 1 and color = white]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-full-new-plans
+        file-print (word pid "," plan-weekday","plan-weekend)
+        set color white
+      ]
+    ]
+    )
+end

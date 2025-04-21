@@ -1,309 +1,284 @@
 to initialization
-  read-demographic-data
-  initialize-frequency
+  read-settings
   initialize-relationship
-  initialize-work-study-location
+  initialize-daily-plan
+  initialize-agent-attributes
 end
 
-to read-demographic-data
-  ;program that reads pre-set data on annual births, deaths, migration in and out, divorces, marriages, and average income
+to read-settings
   file-close-all ; close all open files
-  file-open "Scenarios/Beijing/Settings/Demographic Data.csv"
-  set Nbirth []
-  set Ndeath []
-  set Nimm []
-  set Nemi []
-  set Nmarr []
-  set Ndivo []
-  set MeanIncome []
+  ;read configuration files of population dynamics model
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Configuration File.csv"
+  let headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    ;Birth model
+    set P-age-bir item 0 data
+    set P-max-bir item 1 data
+    set P-bir-decay item 2 data	
+    set P-bir-coef item 3 data
+    ;Retirement model
+    set P-age-ret-male	item 4 data
+    set P-age-ret-fem item 5 data
+    set	P-inco-ret item 6 data
+    ;Marriage model
+    set P-age-mar-male item 7 data
+    set P-age-mar-fem item 8 data
+    ;Income model
+    set P-inc-min item 9 data
+  ]
+  file-close
+  
+  ;read configuration files of education and school parameters
+  set P-pro-fur []
+  set P-edu-fur []
+  set P-edu-sch []
+  set B-coe-lab-sch []
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Education Configuration/Education School.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-edu-sch lput (list item 0 data item 1 data item 2 data) P-edu-sch
+  ]
+  set P-edu-sch remove-item 0 P-edu-sch
+  file-close
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Education Configuration/Education Progression.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data != "Education"
+    [set P-pro-fur lput (list item 0 data item 1 data) P-pro-fur] 
+  ]
+  set P-pro-fur remove-item 0 P-pro-fur
+  file-close
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Education Configuration/Education Progression Details.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-edu-fur lput (list item 0 data item 1 data item 2 data) P-edu-fur
+  ]
+  set P-edu-fur remove-item 0 P-edu-fur
+  file-close
+  
+  ;Read annual demographic data
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Annual Demographic Data/Annual Demographic Data.csv"
+  set P-bir []
+  set P-dea []
+  set P-imm []
+  set P-emi []
+  set P-mar []
+  set P-div []
+  set P-cha-inco []
   while [ not file-at-end? ] 
   [
     let data csv:from-row file-read-line
-    set Nbirth lput item 1 data Nbirth
-    set Ndeath lput item 2 data Ndeath
-    set Nimm lput item 3 data Nimm
-    set Nemi lput item 4 data Nemi
-    set Nmarr lput item 5 data Nmarr
-    set Ndivo lput item 6 data Ndivo
-    set MeanIncome lput item 7 data MeanIncome
+    set P-bir lput item 1 data P-bir
+    set P-dea lput item 2 data P-dea
+    set P-imm lput item 3 data P-imm
+    set P-emi lput item 4 data P-emi
+    set P-mar lput item 5 data P-mar
+    set P-div lput item 6 data P-div
+    set P-cha-inco lput item 7 data P-cha-inco
   ]
-  set Nbirth remove-item 0 Nbirth
-  set Ndeath remove-item 0 Ndeath
-  set Nmarr remove-item 0 Nmarr
-  set Ndivo remove-item 0 Ndivo
-  set Nemi remove-item 0 Nemi
-  set Nimm remove-item 0 Nimm
-  set MeanIncome remove-item 0 MeanIncome
+  set P-bir remove-item 0 P-bir
+  set P-dea remove-item 0 P-dea
+  set P-mar remove-item 0 P-mar
+  set P-div remove-item 0 P-div
+  set P-emi remove-item 0 P-emi
+  set P-imm remove-item 0 P-imm
+  set P-cha-inco remove-item 0 P-cha-inco
   file-close
-  
-  ;daily plan
-  set WeekdayShoppingLoc []
-  set WeekendShoppingLoc []
-  set WeekdayLeisureLoc []
-  set WeekendLeisureLoc []
-  
-  file-close-all ; close all open files
-  file-open "Scenarios/Beijing/Settings/DailyPlanLoc.csv"
-  while [not file-at-end?]
-  [
-    let data csv:from-row file-read-line
-    set weekdayshoppingloc lput item 1 data weekdayshoppingloc
-    set weekendshoppingloc lput item 2 data weekendshoppingloc
-    set weekdayleisureloc lput item 3 data weekdayleisureloc
-    set weekendleisureloc lput item 4 data weekendleisureloc
-  ]
-  set weekdayshoppingloc remove-item 0 weekdayshoppingloc
-  set weekendshoppingloc remove-item 0 weekendshoppingloc
-  set WeekdayLeisureLoc remove-item 0 WeekdayLeisureLoc
-  set WeekendLeisureLoc remove-item 0 WeekendLeisureLoc
-  file-close
-  
-  
-  set WeekdayShoppingFre []
-  set WeekendShoppingFre []
-  set WeekdayLeisureFre []
-  set WeekendLeisureFre []
-  file-close-all ; close all open files
-  file-open "Scenarios/Beijing/Settings/DailyPlanFre.csv"
-  while [not file-at-end?]
-  [
-    let data csv:from-row file-read-line
-    set weekdayshoppingfre lput item 1 data weekdayshoppingfre
-    set weekendshoppingfre lput item 2 data weekendshoppingfre
-    set weekdayleisurefre lput item 3 data weekdayleisurefre
-    set weekendleisurefre lput item 4 data weekendleisurefre
-  ]
-  set weekdayshoppingfre remove-item 0 weekdayshoppingfre
-  set weekendshoppingfre remove-item 0 weekendshoppingfre
-  set WeekdayLeisurefre remove-item 0 WeekdayLeisurefre
-  set WeekendLeisurefre remove-item 0 WeekendLeisurefre
-  file-close
-  
-  ;work and study location choice constrain
-  set WorkDistance []
-  set WorkDistanceProb []
-  file-close-all ; close all open files
-  file-open "Scenarios/Beijing/Settings/WorkDistance.csv"
-  while [not file-at-end?]
-  [
-    let data csv:from-row file-read-line
-    set WorkDistance lput item 0 data WorkDistance
-    set WorkDistanceProb lput item 1 data WorkDistanceProb
-  ]
-  set WorkDistance remove-item 0 WorkDistance
-  set WorkDistanceProb remove-item 0 WorkDistanceProb
-  file-close
-  ask people
-  [
-    py:set "WorkDistance" WorkDistance
-    py:set "WorkDistanceProb" WorkDistanceProb
-    (py:run
-      "result = random.choices (WorkDistance, WorkDistanceProb)"
-    )
-    set distance-max item 0 py:runresult "result"
-  ]
   
   ;Social network
-  let friendid []
-  let maxfriend []
-  let minfriend []
-  let friendprob []
-  file-close-all ; close all open files
-  file-open "Scenarios/Beijing/Settings/SocioNetDistribution.csv"
+  set P-gro-age []
+  set P-gro-inco []
+  set P-gro-edu []
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Social Network/Income group.csv"
   while [not file-at-end?]
   [
     let data csv:from-row file-read-line
-    set friendid lput item 0 data friendid
-    set maxfriend lput item 1 data maxfriend
-    set minfriend lput item 2 data minfriend
-    set friendprob lput item 3 data friendprob
+    set P-gro-inco lput data P-gro-inco
   ]
-  set friendid remove-item 0 friendid 
-  set maxfriend remove-item 0 maxfriend
-  set minfriend remove-item 0 minfriend
-  set friendprob remove-item 0 friendprob
-  ask people
+  set P-gro-inco remove-item 0 P-gro-inco
+  file-close
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Social Network/Age group.csv"
+  while [not file-at-end?]
   [
-    py:set "friendid" friendid
-    py:set "friendprob" friendprob
-    (py:run
-      "result = random.choices (friendid, friendprob)"
-    )
-    let friend-id item 0 py:runresult "result"
-    set max-friend item (friend-id - 1) maxfriend
-    set min-friend item (friend-id - 1) minfriend
+    let data csv:from-row file-read-line
+    set P-gro-age lput data P-gro-age
   ]
-end
-
-to initialize-frequency
-  ask people
-  [
-    let weekdayshopping [1 2 3 4]
-    py:set "weekdayshopping" weekdayshopping
-    py:set "weekdayshoppingprob" weekdayshoppingfre
-    (py:run
-      "result = random.choices (weekdayshopping, weekdayshoppingprob)"
-    )
-    set weekday-shopping item 0 py:runresult "result"
-    (ifelse
-      weekday-shopping = 1 [set weekday-shopping 0]
-      weekday-shopping = 2 [set weekday-shopping 1 + random 5] 
-      weekday-shopping = 3 [set weekday-shopping 6 + random 5] 
-      [set weekday-shopping 11 + random 5] 
-    )
+  set P-gro-age remove-item 0 P-gro-age
+  file-close
   
-    let weekendshopping [1 2 3 4]
-    py:set "weekendshopping" weekdayshopping
-    py:set "weekendshoppingprob" weekdayshoppingfre
-    (py:run
-      "result = random.choices (weekendshopping, weekendshoppingprob)"
-    )
-    set weekend-shopping item 0 py:runresult "result"
-    (ifelse
-      weekend-shopping = 1 [set weekend-shopping 0]
-      weekend-shopping = 2 [set weekend-shopping 1 + random 2] 
-      weekend-shopping = 3 [set weekend-shopping 3 + random 2] 
-      [set weekend-shopping 5 + random 2]
-    )
-    
-    let weekdayleisure [1 2 3 4]
-    py:set "weekdayleisure" weekdayleisure
-    py:set "weekdayleisureprob" weekdayleisurefre
-    (py:run
-      "result = random.choices (weekdayleisure, weekdayleisureprob)"
-    )
-    set weekday-leisure item 0 py:runresult "result"
-    (ifelse
-      weekday-leisure = 1 [set weekday-leisure 0]
-      weekday-leisure = 2 [set weekday-leisure 1 + random 5] 
-      weekday-leisure = 3 [set weekday-leisure 6 + random 5] 
-      [set weekday-leisure 11 + random 5] 
-    )
-    
-    let weekendleisure [1 2 3 4]
-    py:set "weekendleisure" weekdayleisure
-    py:set "weekendleisureprob" weekdayleisurefre
-    (py:run
-      "result = random.choices (weekendleisure, weekendleisureprob)"
-    )
-    set weekend-leisure item 0 py:runresult "result"
-    (ifelse
-      weekend-leisure = 1 [set weekend-leisure 0]
-      weekend-leisure = 2 [set weekend-leisure 1 + random 2] 
-      weekend-leisure = 3 [set weekend-leisure 3 + random 2] 
-      [set weekend-leisure 5 + random 2]
-    )
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Social Network/Education group.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-gro-edu lput data P-gro-edu
   ]
-end
-
-to find-hhder
-    ;Assign a householder for each family.
-    let i 1
-    let num-hhd max [hhd] of people
-    while [i <= num-hhd]
+  set P-gro-edu remove-item 0 P-gro-edu
+  file-close
+  
+  file-open "Scenarios/Beijing/Settings/Population Dynamics/Social Network/Configuration File.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data != "P-wgt-age"
     [
-      if count people with [hhd = i] > 0
-      [
-        ifelse (count people with [hhd = i and age >= 18] > 0)
-        [ask one-of people with [hhd = i and age >= 18] [set relationship 1]]
-        [ask one-of people with [hhd = i] [set relationship 1]]
-      ]
-      set i i + 1
+      set P-wgt-age item 0 data
+      set P-wgt-gen item 1 data
+      set P-wgt-inco item 2 data
+      set P-wgt-edu item 3 data
+      set P-min-net item 4 data
     ]
+  ]
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration files of business occupier and school dynamics
+  file-open "Scenarios/Beijing/Settings/Business Ocuppier & School Dynamics/Configuration File.csv"
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    ;firm birth model
+    set B-pro-lab item 0 data
+    set B-pro-firm-exi item 1 data	
+    set B-mean-firm item 2 data	
+    set B-dif-firm item 3 data		
+    set B-up-firm item 4 data		
+    set B-low-firm item 5 data		
+    set B-coe-size-firm item 6 data
+    set	B-coe2-size-firm	item 7 data
+    set B-coe-age-firm	item 8 data
+    set B-coe-acc item 9 data
+    set	B-SF-firm	item 10 data
+    set B-clo-year-firm item 11 data	
+    ;businessman dynamics
+    ;customer flow (simple daily plan)
+    set B-coe-liv-sho item 12 data
+    set	B-coe-liv-lei item 13 data
+    set	B-coe-we-sho	item 14 data
+    set B-coe-we-lei item 15 data
+    ;businessman birth
+    set B-coe-sho	 item 16 data
+    set B-coe-lei item 17 data
+    set B-mean-bus item 18 data	
+    set B-dif-bus item 19 data	
+    ;businessman growth
+    set B-up-busi	item 20 data
+    set B-low-busi	item 21 data
+    set B-coe-size-busi item 22 data
+    set B-coe2-size-busi item 23 data
+    set B-coe-age-busi item 24 data
+    set B-coe-flow item 25 data
+    ;businessman closure
+    set B-SF-busi item 26 data 
+    set B-clo-year-busi item 27 data
+    ;school dynamics
+    set B-coe-sch	item 28 data
+    set B-pro-bir-sch item 29 data
+    set B-coe-dis-sch item 30 data
+    set B-sch-clo item 31 data
+  ]
+  file-close
+  
+  file-open "Scenarios/Beijing/Settings/Business Ocuppier & School Dynamics/School Staff.csv"
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set B-coe-lab-sch lput item 1 data B-coe-lab-sch
+  ]
+  set B-coe-lab-sch remove-item 0 B-coe-lab-sch
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration file of land use model
+  file-open "Scenarios/Beijing/Settings/Land Use/Configuration File.csv"
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set L-coe-cap	 item 0 data
+    set L-det-new item 1 data
+  ]
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration file of real estate model
+  file-open "Scenarios/Beijing/Settings/Real Estate Market/Configuration File.csv"
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    ;residential location choice
+    set R-can-res item 0 data
+    set R-neg-num-res item 1 data
+    set R-neg-pri-res item 2 data
+    set R-loss item 3 data
+    set R-move-owning item 4 data
+    set R-move-renting item 5 data
+    set R-pro-inc-pri item 6 data
+    set R-pro-dec-pri	 item 7 data 
+    set R-inc-pri	 item 8 data
+    set R-dec-pri item 9 data
+    set R-wgt-acc item 10 data
+    set R-wgt-pri item 11 data
+    set R-aff-owning item 12 data
+    set R-exp-hou-owing item 13 data
+    set R-pro-inc-rent	item 14 data
+    set R-pro-dec-rent	item 15 data
+    set R-inc-rent	item 16 data
+    set R-dec-rent	item 17 data
+    set R-wgt-acc-rent	item 18 data
+    set R-wgt-pri-rent	item 19 data
+    set R-aff-rent item 20 data
+    set R-exp-hou-rent item 21 data
+    
+    ;firm location choice
+    set R-coe-rent-firm item 22 data
+    set R-coe-acc-firm item 23 data
+    set R-coe-agg-firm item 24 data	
+    set R-coe-space-firm item 25 data	
+    set R-move-firm item 26 data
+    set R-wgt-rent-CFF	item 27 data
+    set R-wgt-acc-CFF	 item 28 data
+    set R-wgt-agg-CFF	 item 29 data
+    set R-exp-firm item 30 data
+    set R-pro-inc-CFF	 item 31 data
+    set R-pro-dec-CFF item 32 data
+    set R-inc-CFF	 item 33 data
+    set R-dec-CFF	 item 34 data
+    set R-up-CFF item 35 data
+    set R-low-CFF item 36 data
+    set R-can-CFF	item 37 data
+    set R-neg-num-CFF item 38 data
+    set	R-neg-rent-CFF item 39 data
+    
+    ;businessman location choice
+    set R-pro-inc-CFB item 40 data ;The proportion for the rent increase of the commercial facility - businessman
+  set R-pro-dec-CFB	item 41 data;The proportion for the rent decrease of the commercial facility - businessman
+  set R-inc-CFB	item 42 data;The threshold for the rent decrease of the commercial facility - businessman
+  set R-dec-CFB	item 43 data	;The threshold for the rent decrease of the commercial facility - businessman
+  set R-up-CFB	item 44 data;The upper limit of rent of CFF
+  set R-low-CFB	item 45 data;The lower limit of rent of CFF
+  set R-wgt-rent-CFB	item 46 data	;The weight parameter for the rent of the candidate commercial facility – businessman
+  set R-wgt-agg-CFB		item 47 data;The weight parameter for the agglomeration of the candidate commercial facility – businessman
+  set R-wgt-flow-CFB	item 48 data	;The weight parameter for the customer flow of the candidate commercial facility – businessman
+  set R-exp-busi	item 49 data;The threshold for the score of the candidate CFB that a businessman can accept
+  set R-can-CFB	item 50 data ;maximum number of candidate commercial faclity for businessmen
+  set R-neg-num-CFB	item 51 data ;The upper threshold for the number of negotiations of commercial faclity for businessmen
+  set R-neg-rent-CFB	item 52 data ;The threshold for the CFB rent change rate
+    
+  ]    
 end
 
-to initialize-relationship
-   ;Determine each family mamber's relationship to the householder.
-  let i min [who] of people
-  let num-person max [who] of people
-  let num-hhd max [hhd] of people
-  while [i <= num-person]
-  [
-    ask person i [
-      if (relationship = 0)
-      [
-        let hhd1 hhd
-        let hhder1 one-of people with [relationship = 1 and hhd = hhd1]
-        let age1 [age] of hhder1 ;age of householder
-        let gender1 [gender] of hhder1 ;gender of the householder
-        
-        ;Check if they are a spouse: (1) Age difference is no more than 20 years; (2) Different genders; (3) Householder has no spouse
-        if (gender1 = 0 and age1 >= 20) or (gender1 = 1 and age1 >= 22)  ;If the householder is of marriageable age
-        [
-          if relationship = 0 and age - age1 <= 20 and age1 - age <= 20 and gender != gender1 and count people with [hhd = hhd1 and relationship = 2] = 0 and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20))
-          [set relationship 2]
-        ]
-        
-        ;Check if they are a son/daughter or son-in-law/daughter-in-law: Age difference is between 21 and 44 years
-        if (relationship = 0 and age1 - age <= 44 and age1 - age >= 21)
-        [
-          if (gender = 1 and age < 22) [set relationship 3] ;Male under marriageable age is a son
-          if (gender = 0 and age < 20) [set relationship 3] ;Female under marriageable age is a daughter
-          
-          if (gender = 1 and age >= 22) ;If male and over 22 years old
-          [
-            ;Check if the householder has a marriageable daughter
-            ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 0 and age >= 20] > count people with [relationship = 13 and hhd = hhd1 and gender = 1])
-            [set relationship 13]
-            [set relationship 3]
-          ]
-          
-          if (gender = 0 and age >= 20)
-          [
-            ;Check if the householder has a marriageable son
-            ifelse (count people with [relationship = 3 and hhd = hhd1 and gender = 1 and age >= 22] < count people with [gender = 0 and relationship = 13 and hhd = hhd1])
-            [set relationship 13]
-            [set relationship 3]
-          ]    
-        ]
-        
-        ;Check if they are a grandchild: Age difference is greater than 45 years
-        if (relationship = 0 and age1 - age >= 45) [set relationship 6]
-        
-        ;Check if they are a parent: (1) Age difference is between 21 and 44 years; (2) No person currently assigned as the householder's parent
-        if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 0)
-        [set relationship 4]
-        
-        ;Check if they are the spouse's parent: (1) Age difference is between 21 and 44 years; (2) Householder has a spouse; (3) No person currently assigned as the householder's spouse's parent
-        if (relationship = 0 and age - age1 >= 21 and age - age1 <= 44 and count people with [gender = [gender] of myself and relationship = 4 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 5 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
-        [set relationship 5]
-        
-        ;Check if they are the householder's grandparents: (1) Age difference is greater than 45 years; (2) No person currently assigned as the householder's grandparents
-        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 0)
-        [set relationship 7]
-        
-        ;Check if they are the householder's maternal grandparents: (1) Age difference is greater than 45 years; (2) Householder already has grandparents; (3) No person currently assigned as the householder's maternal grandparents
-        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 0)
-        [set relationship 8]
-        
-        ;Check if they are the spouse's grandparents: (1) Age difference is greater than 45 years; (2) Householder already has grandparents and maternal grandparents; (3) No person currently assigned as the spouse's grandparents; (4) Householder has a spouse
-        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 0 and count people with [hhd = hhd1 and relationship = 2] = 1)
-        [set relationship 9]
-        
-        ;Check if they are the spouse's maternal grandparents: (1) Age difference is greater than 45 years; (2) Householder already has grandparents, maternal grandparents, and spouse's grandparents; (3) No person currently assigned as the spouse's maternal grandparents; (4) Householder has a spouse
-        if (relationship = 0 and age - age1 >= 45 and count people with [gender = [gender] of myself and relationship = 7 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 8 and hhd = hhd1] = 1 and count people with [gender = [gender] of myself and relationship = 9 and hhd = hhd1] = 1 and count people with [hhd = hhd1 and relationship = 2] = 1 and count people with [gender = [gender] of myself and hhd = hhd1 and relationship = 10] = 0)
-        [set relationship 10]
-        
-        ;Check if they are the householder's siblings: (1) Age difference is within 20 years
-        if (relationship = 0)
-        [
-          if (abs (age - age1) <= 20)
-          [set relationship  11]
-        ]
-        
-        ;Other relationships
-        if (relationship = 0) [set relationship 12]
-      ]
-      
-        
-    ]
-  set i i + 1
-  ]
 
-  
+to initialize-relationship  
   ; Create connections
   let j min [who] of people
-  set num-person max [who] of people
+  let num-person max [who] of people
   while [j < num-person]
   [
     ask person j 
@@ -463,123 +438,445 @@ to initialize-relationship
   ask links [hide-link]
 end
 
-to initialize-work-study-location
-  ; Initialize education year
-  ; education 0: preschool children, 1: kindergarten, 2: elementary school, 3: middle school, 4: vocational school, 5: high school, 6: associate degree, 7: bachelor's degree, 8: top-up bachelor's degree, 9: master's degree, 10: doctoral degree
-  
-  ; Preschool
-  ask people with [education = 0 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 0) [set edu-year 1]
-    if (age = 1) [set edu-year 2]
-    if (age = 2) [set edu-year 3]
-  ]
-
-  ; Kindergarten
-  ask people with [education = 1 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 3) [set edu-year 1]
-    if (age = 4) [set edu-year 2]
-    if (age = 5) [set edu-year 3]
-  ]
-
-  ; Elementary school
-  ask people with [education = 2 and status = 1]
-  [
-    set edu-year-required 6
-    if (age = 6) [set edu-year 1]
-    if (age = 7) [set edu-year 2]
-    if (age = 8) [set edu-year 3]
-    if (age = 9) [set edu-year 4]
-    if (age = 10) [set edu-year 5]
-    if (age = 11) [set edu-year 6]
-  ] 
-
-  ; Middle school
-  ask people with [education = 3 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 12) [set edu-year 1]
-    if (age = 13) [set edu-year 2]
-    if (age = 14) [set edu-year 3]
-  ]
-
-  ; Vocational school
-  ask people with [education = 4 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 15) [set edu-year 1]
-    if (age = 16) [set edu-year 2]
-    if (age = 17) [set edu-year 3]
-  ]
-
-  ; High school
-  ask people with [education = 5 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 15) [set edu-year 1]
-    if (age = 16) [set edu-year 2]
-    if (age = 17) [set edu-year 3]
-  ]
-
-  ; Associate degree
-  ask people with [education = 6 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 18) [set edu-year 1]
-    if (age = 19) [set edu-year 2]
-    if (age = 20) [set edu-year 3]
-  ]
-  
-  ; Bachelor's degree
-  ask people with [education = 7 and status = 1]
-  [
-    set edu-year-required 4
-    if (age = 18) [set edu-year 1]
-    if (age = 19) [set edu-year 2]
-    if (age = 20) [set edu-year 3]
-    if (age = 21) [set edu-year 4]
-  ]
-  
-  ; Top-up bachelor's degree
-  ask people with [education = 8 and status = 1]
-  [
-    set edu-year-required 2
-    if (age = 21) [set edu-year 1]
-    if (age = 22) [set edu-year 2]
-  ]
-  
-  ; Master's degree
-  ask people with [education = 9 and status = 1]
-  [
-    set edu-year-required 3
-    if (age = 22) [set edu-year 1]
-    if (age = 23) [set edu-year 2]
-    if (age = 24) [set edu-year 3]
-  ]
-  
-  ; Doctoral degree
-  ask people with [education = 10 and status = 1]
-  [
-    set edu-year-required 4
-    if (age = 25) [set edu-year 1]
-    if (age = 26) [set edu-year 2]
-    if (age = 27) [set edu-year 3]
-    if (age = 28) [set edu-year 4]
-  ]
-  
-  ; Calculate acc and agg for firms
+to initialize-agent-attributes
+  ;Firm
   ask firms
   [
-    if count in-employee-neighbors = 0 [die]
     ; Update agglomeration
-    set agg sum [count in-employee-neighbors] of other firms in-radius 2.5
-    if agg = 0 [set agg 1] ; In test cases, most firms have agg = 0, which prevents further calculations, so assign a value of 1
-    
-    ; Update accessibility. Due to the inability to calculate each employee's commute time, use straight-line distance to calculate accessibility
-    ask in-employee-neighbors [set current-ws-dis distance myself]
-    set acc sum [current-ws-dis] of in-employee-neighbors / count in-employee-neighbors
+    set agg sum [count in-employee-neighbors] of other firms in-radius neighborhood
+    if agg = 0 [set agg 1] ;In test cases, most firms have agg = 0, which prevents further calculations, so assign a value of 1
   ]
+  ;update accessibility     
+  ifelse dailyplan = "Simple"
+  [
+    ask firms with [age != 0]
+    [
+      ask in-employee-neighbors [set dis-cur distance myself if dis-cur = 0 [set dis-cur 0.1]]
+      set acc 1 / sum [dis-cur] of in-employee-neighbors * count in-employee-neighbors
+    ]
+  ]
+  ;dailyplan = "Typical" or dailyplan = "Full"
+  [
+    ;output household information
+    let file-name "Mobility and Accessibility/input/housing_processed.csv"
+    let filename "housing_processed.csv"
+    py:set "filename" filename
+    (py:run
+      "root_dir = os.getcwd()"
+      "for root, dirs, files in os.walk(root_dir):"
+      "  for file in files:"
+      "    if file == filename:"
+      "        file_path = os.path.join(root, file)"
+      "        os.remove(file_path)"
+     )
+    file-open "Mobility and Accessibility/input/housing_processed.csv"
+    file-print "hh_id,live_location,hh_people,hh_income"
+    ask firms
+    [
+      ask in-employee-neighbors [ask one-of households with [hhd = [hhd] of myself][set color red]]
+    ]
+    ask households with [color = red]
+    [
+      file-print (Word hhd"," (word "POINT ("Long" "Lat")") "," hhd-size","hhd-income)
+    ]
+    file-close
+    ask households [set color white]
+
+    ;output person information
+    set file-name "Mobility and Accessibility/input/person_processed.csv"
+    set filename "person_processed.csv"
+    py:set "filename" filename
+    (py:run
+      "root_dir = os.getcwd()"
+      "for root, dirs, files in os.walk(root_dir):"
+      "  for file in files:"
+      "    if file == filename:"
+      "        file_path = os.path.join(root, file)"
+      "        os.remove(file_path)"
+     )
+    file-open "Mobility and Accessibility/input/person_processed.csv"
+    file-print "unique_id,work_point,hh_id,ff_id"
+    ask firms
+    [
+      let my-oid [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let ff_id (word [who] of myself "_" my-oid)
+        let unique_id (word PID "_" my-oid)
+        let work_point (word "POINT ("[Long] of myself" "[Lat] of myself")")
+        file-print (Word unique_id","work_point","hhd","ff_id)
+      ]
+    ]
+    file-close
+  
+    ;output weekday daily plan
+    set file-name "Mobility and Accessibility/input/weekday_plan_with_location.csv"
+    set filename "weekday_plan_with_location.csv"
+    py:set "filename" filename
+    (py:run
+      "root_dir = os.getcwd()"
+      "for root, dirs, files in os.walk(root_dir):"
+      "  for file in files:"
+      "    if file == filename:"
+      "        file_path = os.path.join(root, file)"
+      "        os.remove(file_path)"
+     )
+    file-open "Mobility and Accessibility/input/weekday_plan_with_location.csv"
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    ask firms
+    [
+      let my-oid [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let num-activity length plan-weekday
+        let j 1
+        while [j < num-activity]
+        [
+          let hh_id hhd
+          let unique_id (word pid "_" my-oid)
+          let a1 item (j - 1) plan-weekday
+          let tt_o_purpose item 0 a1
+          let tt_mode item 5 a1
+          let a2 item j plan-weekday
+          let tt_d_purpose item 0 a2
+          let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+          let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+          file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+          set j j + 1
+        ]
+      ]
+    ]
+    file-close
+  
+    ;calculate accessibility by python
+    (py:run
+      "args = ['python', 'person_acc_calculation_selfsim_every_year.py', 'full_daily_plan', 'work']"
+      "subprocess.run(args)"
+    )
+  
+    ;read result
+    file-open "Mobility and Accessibility/output/typical_work.csv"
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "ff_id"
+      [
+        let FID1 item 0 data
+        ask turtle FID1 [set acc item 2 data]
+      ]
+    ]
+    file-close
+  ]
+  
+  
+  ;residential facility
+  ask RFs
+  [
+    set available-space capacity - sum [residence-size] of in-link-neighbors
+    ;Calculate the average ResPrice and rent of houses in the surrounding N km (tentatively N is 2)
+    set surrounding-purchase mean [ResPrice] of RFs in-radius neighborhood
+    set surrounding-rent mean [ResRent] of RFs in-radius neighborhood
+    
+    ;update avearge income of purchasers and renters
+    ifelse count in-purchase-neighbors > 0 [set purchaser-income sum [hhd-income] of in-purchase-neighbors / sum [hhd-size] of in-purchase-neighbors] [set purchaser-income 0]
+    ifelse count in-rent-neighbors > 0 [set renter-income sum [hhd-income] of in-rent-neighbors / sum [hhd-size] of in-rent-neighbors][set renter-income 0]
+  ]
+  ask RFs with [purchaser-income = 0][set purchaser-income [purchaser-income] of min-one-of RFs with [purchaser-income != 0] [distance myself]]
+  ask RFs with [renter-income = 0][set renter-income [renter-income] of min-one-of RFs with [renter-income != 0] [distance myself]]
+  
+  ;office facility
+  ask CFFs 
+  [
+    set available-space capacity - sum [office-size] of in-rent-neighbors
+    set agg sum [firm-size] of in-rent-neighbors in-radius neighborhood
+  ]
+  
+  ;commercial facility
+  ask CFBs
+  [
+    set available-space capacity - sum [space] of in-rent-neighbors
+    set agg-shopping sum [space] of businessmen with [rent-neighbor? myself and btype = 1]
+    set agg-leisure sum [space] of businessmen with [rent-neighbor? myself and btype = 2]
+  ]
+  set ave-shopping-flow sum [flow] of businessmen with [btype = 1] / count businessmen with [btype = 1]
+  set ave-leisure-flow sum [flow] of businessmen with [btype = 2] / count businessmen with [btype = 2]
+  
+  ask schools [set available-space capacity - count in-student-neighbors]
+  
+  
+  
+  set ave-rf-price mean [resprice] of rfs;Average purchasing price of residential facilities in the current year
+  set ave-rf-price-last mean [resprice] of rfs ;Average purchasing price of residential facilities in the previous year
+  set ave-rf-rent mean [resrent] of rfs;Average rent of residential facilities in the current year
+  set ave-rf-rent-last mean [resrent] of rfs;Average rent of residential facilities in the previous year
+  set ave-cff-rent mean [CFFRent] of CFFs;Average rent of commercial facilities (firm) in the current year
+  set ave-cff-rent-last mean [CFFRent] of CFFs;Average rent of office (firm) facilities in the previous year
+  set ave-cfb-rent mean [CFBRent] of CFBs;Average rent of commercial (businessman) facilities in the current year
+  set ave-cfb-rent-last mean [CFBRent] of CFBs;Average rent of commercial (businessman) facilities in the previous year
+  
+end
+
+to initialize-daily-plan
+  ;initialize customer flow of businessmen
+  (ifelse
+    dailyplan = "Simple" 
+    [
+      ask businessmen with [btype = 1]
+      [
+        let living-cus count people in-radius neighborhood
+        let we-cus 0
+        ask businessmen in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask firms in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-student-neighbors]
+        
+        set flow B-coe-liv-sho * living-cus + B-coe-we-sho * we-cus
+      ]
+      ask businessmen with [btype = 2]
+      [
+        let living-cus count people in-radius neighborhood
+        let we-cus 0
+        ask businessmen in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask firms in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-student-neighbors]
+        
+        set flow B-coe-liv-lei * living-cus + B-coe-liv-lei * we-cus
+      ]
+    ]
+    dailyplan = "Typical" 
+    [
+      ;extract activities from dailyplan.xml
+      (py:run "subprocess.run(['python', 'Mobility and Accessibility/DailyPlantoCSV.py'])")
+      ;read activity chain
+      ask people [set chain-weekday [] set plan-weekday []]
+      file-open "typical_weekday_activities.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        if item 0 data != "PID"
+        [
+          let PID1 item 0 data
+          let Activity1 item 1 data
+          let FacilityID1 item 2 data
+          let Duration1 item 5 data
+          let Mode1 item 6 data
+          ask one-of people with [PID = PID1]
+          [
+            set chain-weekday lput activity1 chain-weekday
+            let facility nobody
+            (ifelse
+              activity1 = "home" [set facility one-of RFs with [RID = FacilityID1]]
+              activity1 = "work" [set facility one-of in-employee-neighbors]
+              activity1 = "education" [set facility one-of in-student-neighbors]
+              activity1 = "shopping" [set facility one-of businessmen with [BID = FacilityID1] create-shopping-with facility ask one-of my-shoppings with [other-end = facility][set daytype 1]]
+              activity1 = "leisure" [set facility one-of businessmen with [BID = FacilityID1] create-leisure-with facility ask one-of my-leisures with [other-end = facility][set daytype 1]]
+            )
+            let long1 [long] of facility
+            let lat1 [lat] of facility
+            set plan-weekday lput (list activity1 facility long1 lat1 duration1 mode1) plan-weekday
+          ]
+        ]
+      ]
+      
+      ;read distribution
+      set H-sho-loc-weekday []
+      set H-lei-loc-weekday []
+      set H-mode-vo-weekday [] ;[[prob-Bus-2km prob-Private_vehicle-2km prob-Subway-2km prob-Taxi-2km prob-Two_wheels-2km prob-Walking-2km] [prob of 2-5km] [prob of 5-10km] [prob of 10-20km] [prob of > 20km]]
+      set H-mode-nvo-weekday []
+      
+      file-open "weekday_shopping_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-sho-loc-weekday lput item 1 data H-sho-loc-weekday
+      ]
+      set H-sho-loc-weekday remove-item 0 H-sho-loc-weekday
+      file-close
+      
+      file-open "weekday_leisure_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-lei-loc-weekday lput item 1 data H-lei-loc-weekday
+      ]
+      set H-lei-loc-weekday remove-item 0 H-lei-loc-weekday
+      file-close
+      
+      file-open "weekday_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-vo-weekday lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-vo-weekday
+      ]
+      set H-mode-vo-weekday remove-item 0 H-mode-vo-weekday
+      file-close
+      
+      file-open "weekday_non_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-nvo-weekday lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-nvo-weekday
+      ]
+      set H-mode-nvo-weekday remove-item 0 H-mode-nvo-weekday
+      file-close
+      
+      ;Businessmen calculate customer flow
+      ask businessmen with [btype = 1] [set flow count my-shoppings * 7]
+      ask businessmen with [btype = 2] [set flow count my-leisures * 7]
+    ]
+    ;dailyplan = "Full"
+    [
+      ;extract activities from dailyplan.xml
+      (py:run "subprocess.run(['python', 'Mobility and Accessibility/DailyPlantoCSV.py'])")
+      ;read activity chain on weekday
+      ask people [set chain-weekday [] set plan-weekday []]
+      file-open "typical_weekday_activities.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        if item 0 data != "PID"
+        [
+          let PID1 item 0 data
+          let Activity1 item 1 data
+          let FacilityID1 item 2 data
+          let Duration1 item 5 data
+          let Mode1 item 6 data
+          ask one-of people with [PID = PID1]
+          [
+            set chain-weekday lput activity1 chain-weekday
+            let facility nobody
+            (ifelse
+              activity1 = "home" [set facility one-of RFs with [RID = FacilityID1]]
+              activity1 = "work" [set facility one-of in-employee-neighbors]
+              activity1 = "education" [set facility one-of in-student-neighbors]
+              activity1 = "shopping" [set facility one-of businessmen with [BID = FacilityID1] create-shopping-with facility ask one-of my-shoppings with [other-end = facility][set daytype 1]]
+              activity1 = "leisure" [set facility one-of businessmen with [BID = FacilityID1] create-leisure-with facility ask one-of my-leisures with [other-end = facility][set daytype 1]]
+            )
+            let long1 [long] of facility
+            let lat1 [lat] of facility
+            let plan1 (list activity1 facility long1 lat1 duration1 mode1)
+            set plan-weekday lput plan1 plan-weekday
+          ]
+        ]
+      ]
+      ;read activity chain on weekend
+      ask people [set chain-weekend [] set plan-weekend []]
+      file-open "typical_weekend_activities.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        if item 0 data != "PID"
+        [
+          let PID1 item 0 data
+          let Activity1 item 1 data
+          let FacilityID1 item 2 data
+          let Duration1 item 5 data
+          let Mode1 item 6 data
+          ask one-of people with [PID = PID1]
+          [
+            set chain-weekend lput activity1 chain-weekend
+            let facility nobody
+            (ifelse
+              activity1 = "home" [set facility one-of RFs with [RID = FacilityID1]]
+              activity1 = "work" [set facility one-of in-employee-neighbors]
+              activity1 = "education" [set facility one-of in-student-neighbors]
+              activity1 = "shopping" [set facility one-of businessmen with [BID = FacilityID1] create-shopping-with facility ask one-of my-shoppings with [other-end = facility][set daytype 2]]
+              activity1 = "leisure" [set facility one-of businessmen with [BID = FacilityID1] create-leisure-with facility ask one-of my-leisures with [other-end = facility][set daytype 2]]
+            )
+            let long1 [long] of facility
+            let lat1 [lat] of facility
+            let plan1 (list activity1 facility long1 lat1 duration1 mode1)
+            set plan-weekend lput plan1 plan-weekend
+          ]
+        ]
+      ]
+      ;read distribution
+      set H-sho-loc-weekday []
+      set H-lei-loc-weekday []
+      set H-sho-loc-weekend []
+      set H-lei-loc-weekend []
+      set H-mode-vo-weekday [] ;[[prob-Bus-2km prob-Private_vehicle-2km prob-Subway-2km prob-Taxi-2km prob-Two_wheels-2km prob-Walking-2km] [prob of 2-5km] [prob of 5-10km] [prob of 10-20km] [prob of > 20km]]
+      set H-mode-nvo-weekday []
+      set H-mode-vo-weekend [] ;[[prob-Bus-2km prob-Private_vehicle-2km prob-Subway-2km prob-Taxi-2km prob-Two_wheels-2km prob-Walking-2km] [prob of 2-5km] [prob of 5-10km] [prob of 10-20km] [prob of > 20km]]
+      set H-mode-nvo-weekend []
+      
+      file-open "weekday_shopping_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-sho-loc-weekday lput item 1 data H-sho-loc-weekday
+      ]
+      set H-sho-loc-weekday remove-item 0 H-sho-loc-weekday
+      file-close
+      
+      file-open "weekday_leisure_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-lei-loc-weekday lput item 1 data H-lei-loc-weekday
+      ]
+      set H-lei-loc-weekday remove-item 0 H-lei-loc-weekday
+      file-close
+      
+      file-open "weekend_shopping_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-sho-loc-weekend lput item 1 data H-sho-loc-weekend
+      ]
+      set H-sho-loc-weekend remove-item 0 H-sho-loc-weekend
+      file-close
+      
+      file-open "weekend_leisure_distribution.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-lei-loc-weekend lput item 1 data H-lei-loc-weekend
+      ]
+      set H-lei-loc-weekend remove-item 0 H-lei-loc-weekend
+      file-close
+      
+      file-open "weekday_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-vo-weekday lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-vo-weekday
+      ]
+      set H-mode-vo-weekday remove-item 0 H-mode-vo-weekday
+      file-close
+      
+      file-open "weekday_non_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-nvo-weekday lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-nvo-weekday
+      ]
+      set H-mode-nvo-weekday remove-item 0 H-mode-nvo-weekday
+      file-close
+      
+      file-open "weekend_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-vo-weekend lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-vo-weekend
+      ]
+      set H-mode-vo-weekend remove-item 0 H-mode-vo-weekend
+      file-close
+      
+      file-open "weekend_non_vehicle_choice.csv"
+      while [not file-at-end?]
+      [
+        let data csv:from-row file-read-line
+        set H-mode-nvo-weekend lput (list item 0 data item 1 data item 2 data item 3 data item 4 data item 5 data item 6 data) H-mode-nvo-weekend
+      ]
+      set H-mode-nvo-weekend remove-item 0 H-mode-nvo-weekend
+      file-close
+      
+      ;businessmen calculate customer flow
+      ask businessmen with [btype = 1] [set flow count my-shoppings with [daytype = 1] * 5 + count my-shoppings with [daytype = 2] * 2]
+      ask businessmen with [btype = 2] [set flow count my-leisures with [daytype = 1] * 5 + count my-leisures with [daytype = 2] * 2]
+    ]
+   )
+  print "Daily plan is initialized"
 end

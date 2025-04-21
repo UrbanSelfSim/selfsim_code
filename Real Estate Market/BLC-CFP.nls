@@ -1,0 +1,139 @@
+;In the Businessman Location Choice & Commercial Facility (for Businessmen) Price Model simulates the decision-making process businessman agents use to select the locations of commercial facilities - shops & leisure and illustrates how commercial facilities - firms fluctuate during this selection process. 
+;Specifically, Businessman agent is a collective term used to describe both shop and leisure service agents. 
+;Accordingly, there are two kinds of commercial facilities for them, namely, commercial facilities for shops and commercial facilities for the leisure, respectively.
+
+CBrents-own
+[
+  Lrent
+  Lagg
+  Lflow
+  Ulocation
+]
+
+;simulate new Businessmen' location choice 
+to BLC-CFP
+  set cfb-rent-transaction 0
+  ask CFBs 
+  [
+    set CFBRent-max CFBRent * R-up-CFB 
+    set CFBRent-min CFBRent * R-low-CFB 
+    set agg-shopping sum [space] of in-rent-neighbors with [BType = 1]
+    set agg-leisure sum [space] of in-rent-neighbors with [BType = 2]
+  ]
+  
+  ask Businessmen with [location-choice = 1]
+  [
+    ask up-to-n-of R-can-cfb CFBs with [capacity > [space] of myself]
+    [
+      let renter myself
+      create-CBrent-with renter
+      ask one-of my-CBrents with [other-end = renter]
+      [
+        ;record utility of cost
+        set Lrent ([CFBRent] of myself / mean [CFBrent] of CFBs) - 1
+        ;record utility of agglomeration
+        ifelse [btype] of renter = 1 [set Lagg [agg-shopping] of myself / mean [agg-shopping] of CFBs - 1] [set Lagg [agg-leisure] of myself / mean [agg-leisure] of CFBs - 1]
+        ;record utility of traffic
+        set Lflow [flow] of myself / mean [flow] of CFBs - 1
+        ;calculate total utility
+        set Ulocation R-wgt-rent-CFB  * lrent + R-wgt-agg-CFB  * lagg + R-wgt-flow-CFB  * Lflow
+      ]
+    ]
+  ]
+  
+  let increment R-neg-rent-cfb + 1
+  set ave-cfb-rent sum [CFBRent * capacity] of CFBs / sum [capacity] of CFBs
+  let i 1
+  while [i <= R-neg-num-cfb and increment > R-neg-rent-cfb] ;5 times R-neg-num-cf
+  [
+    if export-attractiveness
+    [
+      let file-name (word "Output Data/CF attractiveness of renting" i ".csv")
+      let filename (word "CF attractiveness of renting" i ".csv")
+      py:set "filename" filename
+      (py:run
+        "root_dir = os.getcwd()"
+        "for root, dirs, files in os.walk(root_dir):"
+        "  for file in files:"
+        "    if file == filename:"
+        "        file_path = os.path.join(root, file)"
+        "        os.remove(file_path)"
+       )
+      file-open file-name
+      file-print "CID,Attractiveness"
+    ]
+    ;calculate attractiveness of commercial buildings, and update their rent according to their attractiveness
+    ask CFBs [set attractiveness 0]
+    ask CFBs with [capacity > 0]
+    [
+      set attractiveness sum [Ulocation] of my-CBrents / capacity
+      if export-attractiveness
+      [
+        file-print (word CFBID","attractiveness)
+      ]
+      
+      (ifelse 
+        attractiveness > R-inc-CFB ;attractiveness is above 'T-CB-increase', CB will increase its rent
+        [
+          set CFBrent CFBrent + R-pro-inc-CFB * (attractiveness - R-inc-CFB) * CFBRent
+          if CFBRent > CFBRent-max [set CFBRent CFBRent-max]
+          
+          ;update its utility, because of rent change
+          ask my-CBrents [set Lrent [CFBRent] of myself / mean [CFBRent] of CFBs - 1 set Ulocation R-wgt-rent-CFB  * lrent + R-wgt-agg-CFB  * lagg + R-wgt-flow-CFB  * Lflow]
+        ]
+        attractiveness < R-dec-CFB
+        [
+          set CFBRent CFBRent + R-pro-dec-CFB * (attractiveness - R-dec-CFB) * CFBRent
+          if CFBRent < CFBRent-min [set CFBRent CFBRent-min]
+          
+          ;update its utility, because of rent change
+          ask my-CBrents [set Lrent [CFBRent] of myself / mean [CFBRent] of CFBs - 1 set Ulocation R-wgt-rent-CFB  * lrent + R-wgt-agg-CFB  * lagg + R-wgt-flow-CFB  * Lflow]
+        ]
+        [set CFBRent CFBRent * 1]
+      )
+    ]
+    file-close
+    set ave-cfb-rent-last ave-cfb-rent
+    set ave-cfb-rent sum [CFBRent * capacity] of CFBs / sum [capacity] of CFBs
+    set increment abs (ave-cfb-rent - ave-cfb-rent-last) / ave-cfb-rent-last
+    set i i + 1
+  ]
+  
+  ask CBrents with [Ulocation < R-exp-busi][die]
+  
+  ;simulate Businessmen rent office buildings after 5 times of R-neg-num-cf
+  while [count Businessmen with [location-choice = 1 and count in-CBrent-neighbors > 0] > 0]
+  [
+    ask max-one-of Businessmen with [location-choice = 1 and count in-CBrent-neighbors > 0][space]
+    [
+      set cfb-rent-transaction cfb-rent-transaction + 1
+      set location-choice 0
+      let target-link max-one-of my-CBrents [Ulocation] ;select one-of office building with the highest utility, and record it as target
+      let target [other-end] of target-link
+      ask my-CBrents [die]
+      create-rent-with target
+      set long [long] of target
+      set lat [lat] of target
+      ask target 
+      [
+        set available-space available-space - [space] of myself
+        ask my-CBrents [if [space] of other-end > [capacity] of myself [die]]
+      ]
+    ]
+  ]
+  
+  ;If no suitable building is found in above renting behviors, Businessmen with will rent the building with the lowest rent on the market.
+  ask Businessmen with [location-choice = 1]
+  [
+    set cfb-rent-transaction cfb-rent-transaction + 1
+    let target min-one-of CFBs with [capacity >= [emp-req] of myself][CFBRent]
+    set location-choice 0
+    create-rent-with target
+    set long [long] of target
+    set lat [lat] of target
+    set space emp-req
+    ask one-of CFBs with [rent-neighbor? myself] [set available-space available-space - [space] of myself]
+  ]
+  
+  print "Businessman location choice and commercial facility price model finished"
+end

@@ -1,0 +1,176 @@
+;Marriage model simulates marriage dynamics within the population. 
+;The Marriage Model uses input data to determine the number of marriages each year and matches individuals for marriage according to rules including age and social network status. 
+;Here, the marriage rates for each simulation year can be predicted, for example, using statistical models or machine learning methods which can be trained with historical marriage rates. 
+
+to marriage-model  
+  ;select new couples
+  let num-marriage item (year - base-year - 1) P-mar
+  
+  while [num-marriage > 0]
+  [
+    let bride nobody
+    let bridegroom nobody
+    ifelse social-network
+    ;social network exists
+    [
+      set num-marriage num-marriage - 1
+      set bride one-of people with [gender = 0 and age >= P-age-mar-fem and count in-couple-neighbors = 0 and count in-friend-neighbors with [gender = 1 and age >= P-age-mar-male and count in-couple-neighbors = 0 and hhd != [hhd] of myself] > 0]
+      ifelse bride != nobody 
+      [
+        ask bride [set color pink] 
+        set bridegroom one-of people with [gender = 1 and age >= P-age-mar-male and count in-couple-neighbors = 0 and hhd != [hhd] of bride and friend-neighbor? bride] 
+        ask bride [ask one-of my-friends with [other-end = bridegroom][die] create-couple-with bridegroom]
+      ]
+      [set num-marriage 0]
+    ]
+    ;social network not exists
+    [
+      combine-attribute
+      set bride one-of people with [gender = 0 and age >= P-age-mar-fem and count in-couple-neighbors = 0 and count people with [gender = 1 and age >= P-age-mar-male and count in-couple-neighbors = 0 and hhd != [hhd] of myself] > 0]
+      ifelse bride != nobody 
+      [
+        set num-marriage num-marriage - 1
+        ask bride 
+        [
+          set color pink
+          let candidates up-to-n-of 20 people with [gender = 1 and age >= P-age-mar-male and count in-couple-neighbors = 0 and hhd != [hhd] of bride]
+          ask candidates [set similarity P-wgt-age * abs (age-group - [age-group] of bride) / length P-gro-age + P-wgt-edu * abs (education-group - [education-group] of bride) / length P-gro-edu]
+          set bridegroom min-one-of candidates [similarity]
+          create-couple-with bridegroom
+        ]
+      ]
+      [set num-marriage 0] 
+    ]
+  ]
+  
+  ask people with [color = pink]
+  [
+    let bride self
+    let bridegroom one-of people with [couple-neighbor? myself]
+    let new-family 0 ; a local variable to record whether this new couple has already moved into a family
+    
+    ;Rules:
+    ;Case1: Neither of them is the householder (relationship = 1): they will separate from their original family and form a new one
+    ;Case2: One of them is householder: The one who is not householder joins the family who is householder
+    ;Case3: If both are householder, the one with fewer persons joins the one with more persons.
+    
+    
+    ; Case1: Neither of them is the householder (relationship = 1): form a new household
+    if ([relationship] of bride != 1 and [relationship] of bridegroom != 1 and new-family = 0)
+    [
+      set new-family 1
+      let hhd1 max [hhd] of households + 1
+      ask one-of households [hatch 1 [set hhd hhd1 set mandatory 1 set hhd-size 0 set hhd-income 0 set res 0 set flexible 0 set residence-size 0 set residence-cost 0 set acc-current 0 set move 0]]
+      ask households with [hhd = [hhd] of bride or hhd = [hhd] of bridegroom][set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] ;two original households' flexible trigger increases by 1
+      let child-bridegroom people with [hhd = [hhd] of bridegroom and age < 18 and in-parent-neighbor? bridegroom] ;record children of bridegroom aged below 18 years old
+      let child-bride people with [hhd = [hhd] of bride and age < 18 and in-parent-neighbor? bride] ;record children of bride aged below 18 years old
+      ask bridegroom [set hhd hhd1 set relationship 1 set livelong 0 set livelat 0]
+      ask bride [set hhd hhd1 set relationship 2 set livelong 0 set livelat 0]
+      ask child-bride [set hhd hhd1 set relationship 3 set livelong 0 set livelat 0]
+      ask child-bridegroom [set hhd hhd1 set relationship 3 set livelong 0 set livelat 0]
+      ask one-of households with [hhd = hhd1] [set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+      file-close
+      
+    ]
+    
+    ;Case 2: One of them is householder: The one who is not the householder joins the family of the householder
+    ;Case 2.1 Bride is a householder
+    if ([relationship] of bride = 1 and [relationship] of bridegroom != 1 and new-family = 0) ;Bride is householder, groom is not, groom joins bride's household
+    [
+      set new-family 1
+      join-ones-family bride bridegroom
+      ask households with [hhd = [hhd] of bride or hhd = [hhd] of bridegroom][set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+    ]
+    ;Case 2.2 Bridegroom is a householder
+    if ([relationship] of bride != 1 and [relationship] of bridegroom = 1 and new-family = 0) ;bridegroom is householder, bride is not, bride joins bridegroom's household
+    [
+      set new-family 1
+      join-ones-family bridegroom bride
+      ask households with [hhd = [hhd] of bride or hhd = [hhd] of bridegroom][set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+    ]
+    
+    ;Case 3: If both are householder, the one with fewer persons joins the one with more persons.
+    if ([relationship] of bride = 1 and [relationship] of bridegroom = 1 and new-family = 0) 
+    [
+      set new-family 1
+      let num-bride count people with [hhd = [hhd] of bride]
+      let num-bridegroom count people with [hhd = [hhd] of bridegroom]
+      ;Case 3.1: The bride's family is larger than the bridegroom's family.
+      ifelse (num-bride > num-bridegroom) ;The bride's original family is larger than the groom's original family, and the groom joins the bride's family.
+      [
+        let hhd1 [hhd] of bridegroom
+        let hhd2 [hhd] of bride
+        join-ones-family bride bridegroom
+        ;The groom's original family chooses a householder and renews the family relationship
+        ifelse count people with [hhd =  hhd1] > 0
+        [
+          ;selecting householder
+          let num-adult count people with [hhd = hhd1 and age >= 18]
+          ifelse (num-adult > 0)
+          [ask one-of people with [hhd = hhd1 and age >= 18][set relationship 1 update-relationship hhd1 self]]
+          [ask one-of people with [hhd = hhd1][set relationship 1 update-relationship hhd1 self]]
+          ask households with [hhd = hhd1 or hhd = hhd2][set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+        ]
+        [
+          ask households with [hhd = hhd1] [die]
+        ]
+      ]
+      ;Case 3.2: The bridegroom's original family is larger than the groom's original family, and the groom joins the bride's family.
+      [
+        let hhd1 [hhd] of bride
+        let hhd2 [hhd] of bridegroom
+        join-ones-family bridegroom bride
+        ifelse count people with [hhd =  hhd1] > 0
+        [
+          ;selecting householder
+          let num-adult count people with [hhd = hhd1 and age >= 18]
+          ifelse (num-adult > 0)
+          [ask one-of people with [hhd = hhd1 and age >= 18][set relationship 1 update-relationship hhd1 self]]
+          [ask one-of people with [hhd = hhd1][set relationship 1 update-relationship hhd1 self]]
+          ask households with [hhd = hhd1 or hhd = hhd2][set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+        ]
+        [
+          ask households with [hhd = hhd1] [die]
+        ]
+      ]
+    ]
+    set color white ask bridegroom [set color white]
+  ]
+  file-close
+  ask households [set hhd-size count people with [hhd = [hhd] of myself] if hhd-size = 0 [die]]
+  print "marriage-model finished"
+end
+
+to join-ones-family [p1 p2]  ;p2 will join p1's home
+  ask one-of households with [hhd = [hhd] of p2][set flexible flexible + 1]
+  ask one-of households with [hhd = [hhd] of p1][set flexible flexible + 1]
+  let p1-household one-of households with [hhd = [hhd] of p1]
+  let p1-residence one-of RFs with [rent-neighbor? p1-household or purchase-neighbor? p1-household]
+  let child-p2 people with [hhd = [hhd] of p2 and age < 18 and parent-neighbor? p2] ;record children of p2 aged below 18 years old
+  ask p2 
+  [
+    set hhd [hhd] of p1 
+    set relationship 2 
+    (ifelse
+      dailyplan = "Full" [residential-change-full p1-residence vehicle-owner file-print (word pid "," plan-weekday "," plan-weekend)]
+      dailyplan = "Typical" [residential-change-typical p1-residence vehicle-owner file-print (word pid "," plan-weekday)]
+      []
+      
+    )
+  ]
+  ask child-p2 
+  [
+    set hhd [hhd] of p1 
+    set relationship 3
+    (ifelse
+      dailyplan = "Full" [residential-change-full p1-residence vehicle-owner file-print (word pid "," plan-weekday "," plan-weekend)]
+      dailyplan = "Typical" [residential-change-typical p1-residence vehicle-owner file-print (word pid "," plan-weekday)]
+      []
+    )
+  ]
+  
+  ;待完成：调用py，读取新daily plan
+  ask people with [hhd = [hhd] of p1][move-to p1 set livelong [livelong] of p1 set livelat [livelat] of p1]
+end
+
+  

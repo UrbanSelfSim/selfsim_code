@@ -1,0 +1,46 @@
+;Death model simulates the removal of person agents from the population by modelling deaths based on a predefined annual number of deaths
+to death-model  
+  let num-deaths item (year - base-year - 1) P-dea ;determine how many people will die in this simulation year
+    
+  while [num-deaths > 0]
+  [
+    set num-deaths num-deaths - 1
+    let target one-of people
+    ask target
+    [
+      if dailyplan != "Simple" [file-print pid]
+      ifelse relationship != 1
+      [die] ;the person agent is not a householder
+      [
+        ;the person agent is a householder
+        ;
+        ifelse count other people with [hhd = [hhd] of myself] > 0
+        [
+          ;if the householder deads and the number of family members is not less than 2, another person will be designated as householder
+          ask one-of households with [hhd = [hhd] of myself][set flexible flexible + 1]
+          let hhd1 hhd
+          set relationship 0
+          ifelse (count other people with [hhd = hhd1 and age >= 18] > 0)
+          [ask one-of other people with [hhd = hhd1 and age >= 18] [set relationship 1]]
+          [ask one-of other people with [hhd = hhd1][set relationship 1]]
+          let hhder one-of people with [hhd = hhd1 and relationship = 1]
+          ask hhder 
+          [
+            update-relationship hhd1 hhder
+            ask one-of households with [hhd = [hhd] of myself][set flexible flexible + 1]
+          ]
+          die
+        ]
+        [
+          ask one-of households with [hhd = [hhd] of myself][die]
+          die 
+        ]
+      ]
+    ]
+  ]
+  file-close
+  
+  ask households [set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+  ask households with [hhd-size = 0] [die]
+  print "death model finished"
+end

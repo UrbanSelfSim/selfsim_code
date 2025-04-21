@@ -1,0 +1,57 @@
+;Retirement model simulates the retirement process within the population by identifying individuals who reach the designated retirement age and transitioning them from active employment to retirement status.
+
+to retirement-model
+  ask people with [gender = 0 and age >= P-age-ret-male]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      set income income * P-inco-ret
+      set welong 0
+      set welat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      set color yellow ;mark by yellow
+    ]
+  ]
+  
+  ask people with [gender = 1 and age >= P-age-ret-male]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      set income income * P-inco-ret
+      set welong 0
+      set welat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      set color yellow
+    ]
+  ]
+  
+  ask people with [color = yellow]
+  [
+    (ifelse 
+      dailyplan = "Typical"
+      [
+        let target one-of people with [color = white and status = 4 and (length chain-weekday != 0 or length chain-weekend != 0)]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-typical-new-plan
+        
+      ]
+      dailyplan = "Full"
+      [
+        let target one-of people with [color = white and status = 4 and (length chain-weekday != 0 or length chain-weekend != 0)]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        generate-full-new-plans
+      ]
+      []
+    )
+    set color white
+  ]
+  file-close-all
+  
+  ;待完成：调用py生成全新daily plan
+end

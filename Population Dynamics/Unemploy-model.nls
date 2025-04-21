@@ -1,0 +1,50 @@
+to retirement-model
+  let file-name-retiree (word "Mobility and Accessibility/retirement" year "year.csv")
+  let filename-retiree (Word "retirement" year "year.csv")
+  py:set "filename" filename-retiree
+  (py:run
+    "root_dir = os.getcwd()"
+    "for root, dirs, files in os.walk(root_dir):"
+    "  for file in files:"
+    "    if file == filename:"
+    "        file_path = os.path.join(root, file)"
+    "        os.remove(file_path)"
+  )
+  file-open (word "Mobility and Accessibility/retirement" year "year.csv") 
+  
+  let male-age item 0 retiree
+  let female-age item 1 retiree
+  let retiree-income item 2 retiree
+  
+  ask people with [gender = 0 and age >= female-age]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      set income income * retiree-income
+      set wslong 0
+      set wslat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      ask my-shoppings with [loc = 1][die]
+      ask my-leisures with [loc = 1][die]
+    ]
+  ]
+  
+  ask people with [gender = 1 and age >= male-age]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      set income income * retiree-income
+      set wslong 0
+      set wslat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      ask my-shoppings with [loc = 1][die]
+      ask my-leisures with [loc = 1][die]
+    ]
+  ]
+  
+  file-close-all
+end

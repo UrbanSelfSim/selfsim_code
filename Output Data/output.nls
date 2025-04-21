@@ -1,6 +1,6 @@
 to output-data
   ;export people's residential location and 
-  let file-name-people (word "Output Data/Annualoutput/people" year "year.csv")
+  let file-name-people (word "Output Data/people" year "year.csv")
   let filename-people (Word "people" year "year.csv")
   py:set "filename" filename-people
   (py:run
@@ -19,10 +19,9 @@ to output-data
   ]
   file-close
 
-
-  let file-name-popline (word "Output Data/Annualoutput/popline" year "year.csv")
-  let filename-popline (Word "popline" year "year.csv")
-  py:set "filename" filename-popline
+  let file-name-RFs (word "Output Data/RFs" year "year.csv")
+  let filename-RFs (Word "RFs" year "year.csv")
+  py:set "filename" filename-RFs
   (py:run
     "root_dir = os.getcwd()"
     "for root, dirs, files in os.walk(root_dir):"
@@ -31,79 +30,57 @@ to output-data
     "        file_path = os.path.join(root, file)"
     "        os.remove(file_path)"
   )
-  file-open file-name-popline
-  file-print "people-ID,livelong,livelat,wslong,wslat"
-
-  ask people with [wslong != 0 and wslat != 0] 
-  [
-    file-print (word who ", " livelong ", " livelat", " wslong ", " wslat )
+  file-open file-name-RFs
+  file-print "RFs-ID,x-coordinate,y-coordinate,House-price,House-rent,capacity"
+  ask RFs [
+    file-print (word rid ", " long ", " lat ", " resprice ", " resrent ", "capacity )
   ]
   file-close
 
 
-
-  let file-name-residences (word "Output Data/Annualoutput/residences" year "year.csv")
-  let filename-residences (Word "residences" year "year.csv")
-  py:set "filename" filename-residences
-  (py:run
-    "root_dir = os.getcwd()"
-    "for root, dirs, files in os.walk(root_dir):"
-    "  for file in files:"
-    "    if file == filename:"
-    "        file_path = os.path.join(root, file)"
-    "        os.remove(file_path)"
-  )
-  file-open file-name-residences
-  file-print "residences-ID,x-coordinate,y-coordinate,House-price,House-rent,capacity"
-  ask residences [
-    file-print (word rid ", " long ", " lat ", " purchasing ", " rrent ", "capacity )
-  ]
-  file-close
-
-
-  let file-name-schools (word "Output Data/Annualoutput/schools" year "year.csv")
-  let filename-schools (Word "schools" year "year.csv")
-  py:set "filename" filename-schools
-  (py:run
-    "root_dir = os.getcwd()"
-    "for root, dirs, files in os.walk(root_dir):"
-    "  for file in files:"
-    "    if file == filename:"
-    "        file_path = os.path.join(root, file)"
-    "        os.remove(file_path)"
-  )
-  file-open file-name-schools
-  file-print "schools-ID,x-coordinate,y-coordinate,Num-student"
-
-  ask schools [
-    file-print (word SchID ", " Long  ", " lat ", " Num-student )
-  ]
-  file-close
-  
-
-  let file-name-firms (word "Output Data/Annualoutput/firms" year "year.csv")
-  let filename-firms (Word "firms" year "year.csv")
-  py:set "filename" filename-firms
-  (py:run
-    "root_dir = os.getcwd()"
-    "for root, dirs, files in os.walk(root_dir):"
-    "  for file in files:"
-    "    if file == filename:"
-    "        file_path = os.path.join(root, file)"
-    "        os.remove(file_path)"
-  )
-  file-open file-name-firms
-  file-print "firms-ID,x-coordinate,y-coordinate,capacity,staff,cost"
-
-  ask firms [
-    file-print (word fid ", " Long  ", " lat ", " capacity ", " staff ", " office-cost)
-  ]
-  file-close
+;  let file-name-schools (word "Output Data/schools" year "year.csv")
+;  let filename-schools (Word "schools" year "year.csv")
+;  py:set "filename" filename-schools
+;  (py:run
+;    "root_dir = os.getcwd()"
+;    "for root, dirs, files in os.walk(root_dir):"
+;    "  for file in files:"
+;    "    if file == filename:"
+;    "        file_path = os.path.join(root, file)"
+;    "        os.remove(file_path)"
+;  )
+;  file-open file-name-schools
+;  file-print "schools-ID,x-coordinate,y-coordinate,Num-student"
+;
+;  ask schools [
+;    file-print (word SchID ", " Long  ", " lat ", " Num-student )
+;  ]
+;  file-close
+;  
+;
+;  let file-name-firms (word "Output Data/firms" year "year.csv")
+;  let filename-firms (Word "firms" year "year.csv")
+;  py:set "filename" filename-firms
+;  (py:run
+;    "root_dir = os.getcwd()"
+;    "for root, dirs, files in os.walk(root_dir):"
+;    "  for file in files:"
+;    "    if file == filename:"
+;    "        file_path = os.path.join(root, file)"
+;    "        os.remove(file_path)"
+;  )
+;  file-open file-name-firms
+;  file-print "firms-ID,x-coordinate,y-coordinate,capacity,staff,cost"
+;
+;  ask firms [
+;    file-print (word fid ", " Long  ", " lat ", " capacity ", " emp ", " office-cost)
+;  ]
+;  file-close
     
 
-  let file-name-OBs (word "Output Data/Annualoutput/OBs" year "year.csv")
-  let filename-OBs (Word "OBs" year "year.csv")
-  py:set "filename" filename-OBs
+  let file-name-OFFs (word "Output Data/OFFs" year "year.csv")
+  let filename-OFFs (Word "OFFs" year "year.csv")
+  py:set "filename" filename-OFFs
   (py:run
     "root_dir = os.getcwd()"
     "for root, dirs, files in os.walk(root_dir):"
@@ -112,15 +89,16 @@ to output-data
     "        file_path = os.path.join(root, file)"
     "        os.remove(file_path)"
   )
-  file-open file-name-OBs
-  file-print "OBs-ID,x-coordinate,y-coordinate,ob-price,capacity"
+  file-open file-name-OFFs
+  file-print "OFFs-ID,x-coordinate,y-coordinate,OFF-price,capacity"
 
-  ask OBs [
-    file-print (word OID ", " long  ", " lat ", " frent ", "capacity )
+  ask CFFs 
+  [
+    file-print (word CFFID ", " long  ", " lat ", " CFFrent ", "capacity )
   ]
   file-close
   
-  let file-name-employees (word "Output Data/Annualoutput/employees" year "year.csv")
+  let file-name-employees (word "Output Data/employees" year "year.csv")
   let file-name (Word "employees" year "year.csv")
   py:set "filename" file-name
   (py:run
@@ -135,7 +113,7 @@ to output-data
   file-print "people-ID,x-coordinate,y-coordinate"
 
   ask people with [status = 2] [
-    file-print (word who ", " wslong  ", " wslat  )
+    file-print (word who ", " welong  ", " welat  )
   ]
   file-close
   

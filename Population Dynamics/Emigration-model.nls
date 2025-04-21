@@ -1,0 +1,16 @@
+;Emigration model simulates the dynamics of emigration, reflecting the changes in population due to families leaving the area.
+
+to Emigration-Model
+  let num-emi item (year - base-year - 1) P-emi ; Calculate the number of emigrants for the current year (based on the base year)
+  while [num-emi > 0]
+  [
+    let candidate one-of households ;randomly select one household
+    set num-emi num-emi - [hhd-size] of candidate
+    ask people with [hhd = [hhd] of candidate] [file-print pid die]
+    ask candidate [die]
+  ]
+  
+  file-close
+  print "Emigration model finished"
+end
+

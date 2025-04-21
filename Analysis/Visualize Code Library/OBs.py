@@ -31,7 +31,7 @@ for year in years:
         df = pd.read_csv(csv_file_path)
         
 
-        df['Ormbcap'] = df['ob-price'] #/ df['capacity']
+        df['Ormbcap'] = df['OFF-price'] #/ df['capacity']
 
         df = df[(df['Ormbcap'].notna()) & (df['Ormbcap'] >= 0)]
         
@@ -208,7 +208,7 @@ for i, (shp_file, gdf) in enumerate(zip(shp_files, gdf_list)):
     for j in range(num_bins - 1):
         ax.fill_between([], [], color=cmap(j), label=f'{int(unique_percentiles[j])}-{int(unique_percentiles[j+1])}')
     # 显示图例
-    ax.legend(title="Rent of Office Building\nUnit: RMB/m2", loc='upper right', fontsize=35)
+    ax.legend(title="Rent of Office Facility\nUnit: RMB/m2", loc='upper right', fontsize=35)
     plt.title(title, fontsize=TitleSize, fontname='SimHei', fontweight='bold')
     
     output_file_path = os.path.join(folder_name,'Geometrically Spaced',f"{os.path.splitext(shp_file)[0]}.png")
@@ -233,7 +233,7 @@ for i, (shp_file, gdf) in enumerate(zip(shp_files, gdf_list)):
     for j in range(num_bins):
         ax.fill_between([], [], color=cmap(j), label=f'{int(price_range_all_years[j])}-{int(price_range_all_years[j+1])}')
 
-    ax.legend(title="Rent of Office Building\nUnit: RMB/m2", loc='upper right', fontsize=35)
+    ax.legend(title="Rent of Office Facility\nUnit: RMB/m2", loc='upper right', fontsize=35)
     plt.title(title, fontsize=TitleSize, fontname='SimHei', fontweight='bold')
     
     output_file_path = os.path.join(folder_name,'Equal Value', f"{os.path.splitext(shp_file)[0]}.png")

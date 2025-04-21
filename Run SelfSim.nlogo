@@ -1,24 +1,28 @@
 __includes
 [
-  "Initialization/setup-agent.nls"
+  "Initialization/load-agent.nls"
   "Initialization/initialization.nls"
-  "Population and Firm Dynamics/Population Dynamics/education-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/income-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/birth-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/employ-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/marriage-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/update-relationship.nls"
-  "Population and Firm Dynamics/Population Dynamics/immigration-model.nls"
-  "Population and Firm Dynamics/Population Dynamics/Death-model.nls"
-  "Population and Firm Dynamics/Firmographic/Firmographic.nls"
-  "Population and Firm Dynamics/Firmographic/Firm Growth.nls"
-  "Population and Firm Dynamics/Firmographic/Firm Closure.nls"
-  "Population and Firm Dynamics/Population Dynamics/network-model.nls"
-  "Land Use/RLC-REP.nls"
-  "Land Use/school-model.nls"
-  "Land Use/Commercial Establishment.nls"
-  "Land Use/FLC-OBP.nls"
-  "Mobility and Accessibility/daily-plan.nls"
+  "Population Dynamics/Education-model.nls"
+  "Population Dynamics/Income-model.nls"
+  "Population Dynamics/Birth-model.nls"
+  "Population Dynamics/Marriage-model.nls"
+  "Population Dynamics/Divorce-model.nls"
+  "Population Dynamics/Update-relationship.nls"
+  "Population Dynamics/Immigration-model.nls"
+  "Population Dynamics/Emigration-model.nls"
+  "Population Dynamics/Death-model.nls"
+  "Population Dynamics/Network-model.nls"
+  "Population Dynamics/Retirement-model.nls"
+  "Business Occupier and School Dyanmics/Firm-dynamics.nls"
+  "Business Occupier and School Dyanmics/School-dynamics.nls"
+  "Business Occupier and School Dyanmics/Businessman-dynamics.nls"
+  "Business Occupier and School Dyanmics/Labour-dynamics.nls"
+  "Business Occupier and School Dyanmics/Student-dynamics.nls"
+  "Land Use/Building-development.nls"
+  "Real Estate Market/RLC-RFP.nls"
+  "Real Estate Market/FLC-CFP.nls"
+  "Real Estate Market/BLC-CFP.nls"
+  "Mobility and Accessibility/human-mobility.nls"
   "Output Data/output.nls"
 ]
 
@@ -27,45 +31,227 @@ extensions [gis py csv profiler array table]
 
 globals
 [
-  labor-current
-  labor-lastyear
-  Tpurchase ;threshold of purchasing a residence
-  Trent ;threshold of renting a residence
   Year
-  Nimm ;Number of people immigrate
-  Nemi ;Number of people emigrate
-  Nbirth ;Number of people born
-  Ndeath ;Number of people dead
-  Nmarr ;Number of married couples
-  Ndivo;Number of divorced couples
-  MeanIncome
-  WeekdayShoppingLoc ;On weekdays, the probability that shopping occurs near work, near home, elsewhere [work/study home other]
-  WeekendShoppingLoc;On weekends, the probability that shopping occurs near work, near home, elsewhere
-  WeekdayLeisureLoc;On weekdays, the probability that leisure occurs near work, near home, elsewhere
-  WeekendLeisureLoc;On weekends, the probability that leisure occurs near work, near home, elsewhere
-  WeekdayShoppingFre ;Probability of frequency of shopping on weekdays [0 0~5 6~10 11~15]
-  WeekendShoppingFre ;Probability of frequency of shopping on weekends [0 0~5 6~10 11~15]
-  WeekdayLeisureFre ;Probability of frequency of leisure on weekdays [0 0~5 6~10 11~15]
-  WeekendLeisureFre ;Probability of frequency of leisure on weekends [0 0~5 6~10 11~15]
 
-  ;the farest location
-  WorkDistance
-  WorkDistanceProb
+  labor-current ;Number of labor force in the current year
+  labor-last ;Number of labor force in the last year
 
-  ;EV market
-  transaction-purchase ;annual housing transaction (purchasing)
-  transaction-rent ;annual housing transaction (renting)
+  ;customer flow of businessman
+  Ave-Shopping-flow ;Average customer flow to businessmen for shopping in the current year
+  Ave-Shopping-flow-last;Average customer flow to businessmen for shopping in the previous year
+  Ave-Leisure-flow;Average customer flow to businessmen for leisure in the current year
+  Ave-Leisure-flow-last ;Average customer flow to businessmen for leisure in the previous year
+
+  ;average real estate price
+  ave-rf-price ;Average purchasing price of residential facilities in the current year
+  ave-rf-price-last ;Average purchasing price of residential facilities in the previous year
+  ave-rf-rent;Average rent of residential facilities in the current year
+  ave-rf-rent-last;Average rent of residential facilities in the previous year
+  ave-Cff-rent;Average rent of office (firm) facilities in the current year
+  ave-Cff-rent-last;Average rent of office (firm) facilities in the previous year
+  ave-cfb-rent;Average rent of commercial (businessman) facilities in the current year
+  ave-cfb-rent-last;Average rent of commercial (businessman) facilities in the previous year
+
+  neighborhood ;Defines the spatial range considered as the surrounding area of an agent or facility during the simulation process.
+
+  ;Population Dynamics Model-----------------------------------------------------------------------------------------------------------------------------------------
+  ;Parameters of social network model
+  P-wgt-age ;Weight assigned to age differences when calculating social similarity
+  P-wgt-gen ;Weight assigned to gender differences when calculating social similarity
+  P-wgt-inco ;Weight assigned to income group differences when calculating social similarity
+  P-wgt-edu ;Weight assigned to education level differences when calculating social similarity
+  P-min-net ;threshold of breaking friendship
+  P-gro-inco ;Relationship between income and income group
+  P-gro-edu ;Relationship between education and education group
+  P-gro-age ;Relationship between age and age group
+
+  ;Birth model
+  ;Birth-config ; [The maximum eligible age for females childbearing  | The maximum number of children a couple can have]
+  P-bir ;Number of people born each year
+  P-age-bir
+  P-max-bir
+  P-bir-decay
+  P-bir-coef
+
+  ;Immigration model
+  P-imm ;Number of people immigrate each year
+
+  ;Emigration model
+  P-emi ;Number of people emigrate each year
+
+  ;Death model
+  P-dea ;Total number of deaths per year
+
+  ;Marriage model
+  P-mar ;Number of married couples each year
+  P-age-mar-male ;minimum legal marriage age for male
+  P-age-mar-fem ;minimum legal marriage age for female
+
+  ;Divorce model
+  P-div ;Number of divorced couples each year
+
+  ;Income model
+  P-cha-inco ;income change
+  P-inc-min ;Predefined minimum income threshold
+
+  ;Retirement model
+  P-age-ret-male ;Male retirement age
+  P-age-ret-fem ;Female retirement age
+  P-inco-ret ;The ratio of post retirement salary to pre retirement salary
+
+  ;education and school parameters
+  P-pro-fur ;probability of pursuing further education after completing the current education level at each education level [probability of education = 0 | probability of education = 1 | ...]
+  P-edu-fur ;Transition probability matrix element; probability that an agent at education level i advances to level j [[edu_i | edu_j | probability] [edu_i | edu_j | probability]]
+  P-edu-sch ;records the schools and required study duration associated with each education level  [[education | school | duration]
+
+
+  ;Business occupier and school dynamics model--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  ;Firm birth model
+  B-pro-lab ;The proportion of labor force growth that gives rise to new start-ups
+  B-pro-firm-exi ;The proportion of existing firms that gives rise to new start-ups
+  B-mean-firm
+  B-dif-firm
+
+  ;Firm growth model
+  B-coe-size-firm ;The coefficient for the size effect of the firm growth
+  B-coe2-size-firm ;The coefficient for the square size effect of the firm growth
+  B-coe-age-firm ;The coefficient for the age effect of the firm growth
+  B-coe-acc ;The coefficient for the accessibility effect of the firm growth
+  B-low-firm ;The lower threshold of the growth rate for firms growth
+  B-up-firm ;The upper threshold of the growth rate for firms growth
+
+  ;Firm closure model
+  B-clo-year-firm ;The number of consecutive years considered when evaluating firm closure
+  B-SF-firm ;The scaling factor used to adjust the closure threshold of the firm’s growth rate
+
+  ;Businessman flow calculation
+  B-coe-liv-sho	 ;The coefficient of the residential agents' influence on the flow (shopping)
+  B-coe-liv-lei	;The coefficient of the residential agents' influence on the flow (leisure)
+  B-coe-we-sho	;The coefficient of the working/education agents' influence on the flow (shopping)
+  B-coe-we-lei;The coefficient of the working/education agents' influence on the flow (leisure)
+
+  ;Businessman birth model
+  B-coe-sho ;The adjustment coefficient used to control the proportion of the increase in average customer flow per businessman agent that is converted into the number of new businessman agents (shopping)
+  B-coe-lei ;;The adjustment coefficient used to control the proportion of the increase in average customer flow per businessman agent that is converted into the number of new businessman agents (leisure)
+  B-mean-bus
+  B-dif-bus
+
+  ;Businessman growth model
+  B-up-busi ;The upper threshold of the growth rate for the businessman agent growth
+  B-low-busi ;The lower threshold of the growth rate for the businessman agent growth
+  B-coe-size-busi ;The coefficient for the size effect of the businessman agent growth
+  B-coe2-size-busi	;The coefficient for the square size effect of the businessman agent growth
+  B-coe-age-busi ;The coefficient for the customer age effect of the businessman agent growth	
+  B-coe-flow ;The coefficient for the customer flow effect of the businessman agent growth
+
+  ;Businessman closure model
+  B-SF-busi	 ;The scaling factor used to adjust the closure threshold of the businessman agent’s growth rate
+  B-clo-year-busi ;The number of consecutive years considered when evaluating businessman agent closure
+
+  ;School dynamics model
+  B-coe-sch	;The adjustment coefficient used to control the proportion of the increase in the number of students that is converted into the number of new schools
+  B-pro-bir-sch ;The proportion of capacity used to determine whether to add new schools
+  B-coe-dis-sch ;The distance decay coefficient reflecting how distance reduces the likelihood of assignment of student
+  B-coe-lab-sch ;the student-to-employee ratio [ratio of school 1 | ratio of school 2 | ratio of school 3]
+  B-sch-clo ;The closure threshold for the school
+  B-stu-last ;number of students in each type of schools [number of student in school 1 | ......] (last year)
+  B-stu-cur ;number of students in each type of schools [number of student in school 1 | ......] (current year)
+
+  ;parameters of real estate market model---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  ;residential location choice
+  R-can-res ;maximum number of candidate residential facilities
+  R-neg-num-res ;The upper threshold for the number of residential negotiations
+  R-neg-pri-res ;The threshold for the residential price change rate
+  R-loss ;loss effect
+  R-move-owning ;The threshold for the number of flexible triggers to decide whether to rent a new residence
+  R-move-renting ;The threshold for the number of flexible triggers to decide whether to purchase a new residence
+  R-pro-inc-pri ;The proportion for the price increase of the residence
+  R-pro-dec-pri	 ;The proportion for the selling price decrease of the residence
+  R-inc-pri	;The threshold for the selling price increase of the residence
+  R-dec-pri ;The threshold for the selling price decrease of the residence
+  R-wgt-acc ;The weight for the accessibility of the residence
+  R-wgt-pri ;The weight for the price of the residence
+  R-aff-owning	;affordability of purchasing a residence
+  R-exp-hou-owing ;The threshold for the score of the candidate residence that a householld can accept
+  R-pro-inc-rent ;The proportion for the rent increase of the residence
+  R-pro-dec-rent	;The proportion for the rent decrease of the residence
+  R-inc-rent	;The threshold for the rent increase of the residence
+  R-dec-rent	;The threshold for the rent decrease of the residence
+  R-wgt-acc-rent	;The weight for the accessibility of the residence
+  R-wgt-pri-rent	;The weight for the price of the residence
+  R-aff-rent	;affordability of renting a residence
+  R-exp-hou-rent ;The threshold for the score of the candidate residence that a householld can accept
+
+  ;firm location choice
+  R-coe-rent-firm	 ;The weight parameter for the rent of the candidate commercial facility – firms
+  R-coe-acc-firm	;The weight parameter for the accessibility of the candidate commercial facility – firms
+  R-coe-agg-firm	;The weight parameter for the agglomeration degree of the candidate commercial facility – firms
+  R-coe-space-firm	;The proportion for the rent increase of the commercial facility - firms
+  R-move-firm ;The utility threshold for determining whether a firm needs to move.
+  R-wgt-rent-CFF ;The weight parameter for the rent of the candidate commercial facility – firms
+  R-wgt-acc-CFF	;The weight parameter for the accessibility of the candidate commercial facility – firms
+  R-wgt-agg-CFF	;The weight parameter for the agglomeration of the candidate commercial facility – firms
+  R-exp-firm ;The threshold for the score of the candidate CFF that a firm can accept
+  R-pro-inc-CFF	 ;The proportion for the rent increase of the commercial facility - firms
+  R-pro-dec-CFF	 ;The proportion for the rent decrease of the commercial facility - firms
+  R-inc-CFF ;The threshold for the rent increase of the commercial facility - firms
+  R-dec-CFF	;The threshold for the rent decrease of the commercial facility - firms
+  R-up-CFF	;The upper limit of rent of CFF
+  R-low-CFF ;The lower limit of rent of CFF
+  R-can-CFF ;maximum number of candidate commercial faclity for firms
+  R-neg-num-CFF ;The upper threshold for the number of negotiations of commercial faclity for firms
+  R-neg-rent-CFF ;The threshold for the commercial facility rent change rate -firm
+
+  ;businessman location choice
+  R-pro-inc-CFB ;The proportion for the rent increase of the commercial facility - businessman
+  R-pro-dec-CFB	;The proportion for the rent decrease of the commercial facility - businessman
+  R-inc-CFB	;The threshold for the rent decrease of the commercial facility - businessman
+  R-dec-CFB		;The threshold for the rent decrease of the commercial facility - businessman
+  R-up-CFB;The upper limit of rent of CFF
+  R-low-CFB;The lower limit of rent of CFF
+  R-wgt-rent-CFB	;The weight parameter for the rent of the candidate commercial facility – businessman
+  R-wgt-agg-CFB	;The weight parameter for the agglomeration of the candidate commercial facility – businessman
+  R-wgt-flow-CFB	;The weight parameter for the customer flow of the candidate commercial facility – businessman
+  R-exp-busi;The threshold for the score of the candidate CFB that a businessman can accept
+  R-can-CFB ;maximum number of candidate commercial faclity for businessmen
+  R-neg-num-CFB ;The upper threshold for the number of negotiations of commercial faclity for businessmen
+  R-neg-rent-CFB ;The threshold for the CFB rent change rate
+
+  ;Real estate transaction volume
+  res-purchase-transaction
+  res-rent-transaction
+  CFF-rent-transaction
+  CFB-rent-transaction
+
+  ;Land use model-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  L-coe-cap ;The coefficient that determines the relationship between the additional activity facility capacity and the demand capacity
+  L-det-new ;The threshold of determine whether to add new facility capacity
+
+  ;Human mobility model-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  ;distance distribution of
+  H-sho-loc-weekday ;distribution of the location of shopping activity happen on weekday[<2km 2-5km 5-10km 10-20km >20km]
+  H-sho-loc-weekend ;distribution of the location of shopping activity happen on weekend[<2km 2-5km 5-10km 10-20km >20km]
+  H-lei-loc-weekday;distribution of the location of leisure activity happen on weekday[<2km 2-5km 5-10km 10-20km >20km]
+  H-lei-loc-weekend;distribution of the location of leisure activity happen on weekend[<2km 2-5km 5-10km 10-20km >20km]
+
+  ;Distribution of travel mode choices by distance (for vehicle owner and non-vehicle owner)
+  ;Transport mode : Bus Private_vehicle Subway Taxi Two_wheels Walking For-Hire Vehicle
+  H-mode-vo-weekday ;[[prob-Bus-2km | prob-Private_vehicle-2km | prob-Subway-2km |prob-Taxi-2km |prob-Two_wheels-2km | prob-Walking-2km | probFor-Hire Vehicle] [prob of 2-5km] [prob of 5-10km] [prob of 10-20km] [prob of > 20km]]
+  H-mode-vo-weekend
+  H-mode-nvo-weekday
+  H-mode-nvo-weekend
+
 ]
 
-breed [people person]
-breed [residences residence]
-breed [schools school]
-breed [firms firm]
-breed [CBs CB] ;commercial building
-breed [shops shop]
-breed [OBs OB] ;office building
-breed [facility-operators facility-operator]
-breed [manufacturers manufacturer]
+breed [People Person]
+breed [Households Household]
+breed [RFs RF]
+breed [Schools School]
+breed [Firms Firm]
+breed [CFBs CFB] ;commercial facilities
+breed [Businessmen Businessman] ;commercial establishment
+breed [CFFs CFF] ;office building
 
 undirected-link-breed [couples couple]
 undirected-link-breed [parents parent]
@@ -78,25 +264,40 @@ undirected-link-breed [purchases purchase]
 undirected-link-breed [students student]
 undirected-link-breed [employees employee]
 
-;shopping and leisure (daily plan)
+;shopping and leisure
 undirected-link-breed [shoppings shopping]
 undirected-link-breed [leisures leisure]
 
-undirected-link-breed [cfrents cfrent] ;candidate office building to rent
-undirected-link-breed [csrents csrent] ;candidate commercial building to rent
-
-undirected-link-breed [c2stations c2station]
-undirected-link-breed [s2stations s2station]
+undirected-link-breed [cfrents cfrent] ;candidate commercial facility (firm)
+undirected-link-breed [cbrents cbrent] ;candidate commercial building (businessman)
 
 patches-own
 [
   random-n
   centroid
   ID
-  Pdistrict ;district
-  dem-res ;demand-residences demand of residential building in this patch (the higher the demand, the more likely to develop a new residential building
-  dem-cb ;demand-residences demand of commercia in this patch (the higher the demand, the more likely to develop a new residential building
-  dem-ob;demand-residences demand of commercia in this patch (the higher the demand, the more likely to develop a new residential building
+  admin ;determine whether the patch falls into the study area
+  dem-RF ;demand-residences demand of residential building in this patch (the higher the demand, the more likely to develop a new residential building
+  dem-CFF
+  dem-CFB
+  dem-school
+]
+
+households-own
+[
+  hhd
+  hhd-size
+  hhd-income
+  res ;residence ID
+  flexible ;number of accumulated flexible triggers
+  mandatory ;mandatory trigger 0- have no mandatory trigger; 1- have mandatory trigger
+  residence-size ;current residence size
+  residence-cost ;current residence cost
+  move ;determine whether move house this year
+  acc-current
+  acc-candidate
+  Long
+  Lat
 ]
 
 people-own
@@ -104,78 +305,68 @@ people-own
   pid ;person ID
   hhd ;household ID
   relationship ;1 housholder 2 spouse of householder 3 son/daughter of householder 4 parents of householder 5 parents of spouse 6 Grandchildren of householder 7 grandparents of housholder 8 maternal grandparents of householder 9 spouse's grandparents 10 maternal grandparents of spouse 11 siblings of householder 12 other 13Daughter-in-law Son-in-law
-  age
-  age-group ;1-below; 2-18~24 years old; 3- years old; 4- years old; 5- years old; 6-55~64 years old; 7- above 65 years old
+  age ;The specific age starting from 0.
+  age-group ;The grouping rules are specified in the configuration file.
   gender ;0-female; 1-male
-  income
-  income-group ;1- less than 3000; 2- 3000~4500; 3- 4500~6000; 4- 6000~8000; 5- 8000~10000; 6- 10000~15000; 7- more than 15000
+  income ; The specific income starting from 0.
+  income-group ;The grouping rules are specified in the configuration file.
 
   ;education related attributes
-  education ;0-preschoolers 1-kindergarten 2-primary school 3-middle school 4-polytechnic school 5-high school 6-college degree7- Bachelor degree 8-from college to bachelor 9-master degree 10-PHD
-  education-level ;1- high school or below; 2 college； 3 bachelor； 4 master or PHD
+  education ;The specific education, start from 0 (preschool)
+  education-group ;The grouping rules are specified in the configuration file.
   edu-year ;Years of study at the current school
-  edu-year-required ;Years required    preschoolers-3 years; kindergarten-3 years; primary school-6 years; middle school-3 years; high school-3 years; polytechnic school-3 years; college-3 years; from college to bachelor-2 years; master-3 years; PHD-4 years
+  edu-year-required ;The duration of study required for each level of education.
 
-  status ;1-students or preschoolers 2-employees 3-unemployees 4-retirees 5-wait to be allocated a school
-
-  hhd-size ;number of family members
-  hhd-income ;household income per year
-  hhd-income-group ;1-less than 100000; 2- 100000~200000; 3- 200000~300000; 4- 300000~500000; 5- 500000~700000; 6- 700000~1000000; 7-more than 1000000
-  license ;1-having a driving license； 0- not having a driving license
-  traffic ;traffic expense
-
+  status ;1-students or preschoolers 2-employees 3-unemployees 4-retirees
 
   ;social network attributes
-  max-friend ; maximum number of friends will have
-  min-friend ; minimum number of friends will have
-  my-score ; a score to another person, which used to represent the extent to which the two persons will become friends
+  max-friend ;The maximum number of friends the person can have.
+  min-friend ;The minimum number of friends one must have.
+  Similarity ; It is used to store the degree of similarity between one person agent and another person agent.
 
 
   ;residence/work and study/shopping/leisure attributes
   district ;district
   livelong ;longitude of residential location
   livelat  ;latitude of residentia
-  wslong  ;longitude of work or study place
-  wslat ;latitude of work or study place
+  welong  ;longitude of work or education place
+  welat ;latitude of work or education place
 
-  ;only for householder (people with relationship equal to 1), others' these variables equal to 0
-  flexible ;number of accumulated flexible triggers
-  mandatory ;mandatory trigger 0- have no mandatory trigger; 1- have mandatory trigger
-  residence-size ;current residence size
-  residence-cost ;current residence cost
-  current-accessibility ; accessibility of current residence
-  move ;determine whether move house this year
 
-  ;distance between current/candidate residence and work/study location
-  candidate-ws-dis
-  current-ws-dis
+  ;Accessibility
+  Acc-current
+  Acc-candidate
 
-  ;daily plan (leisure and shopping)
-  ;frequency of shopping/leisure activities
-  weekday-shopping
-  weekday-leisure
-  weekend-shopping
-  weekend-leisure
+  chain-weekday ;It is used to store the activity chain of this person agent on a typical weekday, with the data format as follows: ["home" "work" "leisure" "home"]
+  chain-weekend;It is used to store the activity chain of this person agent on a typical weekend, with the data format as follows: ["home" "leisur" "home"]
 
-  distance-max  ;Acceptable commuting distance
+  plan-weekday ;It is used to store the complete daily plan of this person agent on a typical weekday,  with the data format as follows:[["home" "residence 1" 140.36 36.97 6000 "bus"] [] [] []]   [activity type | facility id | long | lat | duration | transporation mode to next location]
+  plan-weekend ;It is used to store the complete daily plan of this person agent on a typical weekend, with the data format as follows:
+  vir-plan-weekday ; It is used to generate a virtual daily plan that used to calculate accessibility of residential facility candidates
+  vir-plan-weekend
+
+  ;commuting distance
+  dis-cur
+  dis-can
+
+  vehicle-owner
 ]
 
-residences-own
+RFs-own
 [
   rid ;residential building ID
-  capacity  ;remaining capacity (how many people can move in)
-  initial-capacity ;initial capacity
-  purchasing ;purchasing per unit
-  Rrent ;rent per unit
+  available-space
+  capacity
+  ResPrice ;sale price per unit
+  Resrent ;rent per unit
   purchaser-income ;average income of purchasers in this residential building
   renter-income ;average income of renters in this residential building
   long  ;longitude
   lat  ;latitude
-  att-purchase ;attractiveness to candidate purchasers
+  att-price ;attractiveness to candidate purchasers
   att-rent ;attractiveness to candidate renters
   surrounding-purchase ;purchasings of residential residences within N km
   surrounding-rent ;rents of residential residences within N km
-  district
 ]
 
 firms-own
@@ -183,11 +374,11 @@ firms-own
   FID  ;ID of firm
   Age ;age of firm
 
-  Capacity ;capacity of firm
-  staff ;the actual staff in the firm
+  emp-req ;required number of employees
+  firm-size ;the number of employees
   closure ;for how many years the firm's growth rate of capacity is lower than the closure threshold
 
-  office-size ;Number of workstations
+  office-size
   office-cost ;Office rent for this year
   office-cost-last ;office rent of last year
   office-cost-next ;office rent of next year
@@ -195,32 +386,97 @@ firms-own
   agg-last ;agglomeration last year
   acc ;accessibility
   acc-last ;accessibility last year
-
   location-choice ;Should the company move to another office building
   Long  ;longitude
   Lat  ;latitude
   UMove ;Utility of move to another office building. If Umove greater than a threshold, the firm will move.
+
+  dis-can
 ]
 
-OBs-own
+CFFs-own
 [
-  OID
-  frent ;rent of capacity
-  initial-capacity ;initial capacity
-  capacity; remaining capacity
+  CFFID
+  CFFrent ;rent of capacity
+  capacity
+  available-space
   long ;longitude
   lat ;latitude
-  attractiveness ;attractiveness of office building
-  frent-max ;The maximum value that rent can rise to
-  frent-min ;The minimum value that rent can fall to
+  attractiveness ;attractiveness of CFF
+  CFFrent-max ;The maximum value that rent can rise to
+  CFFrent-min ;The minimum value that rent can fall to
+  agg
+]
+
+;commercial building
+CFBs-own
+[
+  CFBID ;ID
+  Long
+  Lat
+  Capacity
+  Available-space
+  CFBRent ;rent
+  CFBrent-max ;The maximum rent of the CFB can rise to in this simulation year
+  CFBrent-min ;The minimum rent of the CFB can decrease to in this simulation year
+  flow ;The customer flow
+  Agg-shopping ;agglomeration of the businessmen for shopping, which is the sum of capacity of surrouding businessmen for shopping
+  Agg-leisure ;agglomeration of the businessmen for leisuring, which is the sum of capacity of surrouding businessmen for leisuring
+  attractiveness ;attractiveness
+  my-distance ;used to record information of daily plan updating
+]
+
+Businessmen-own
+[
+  BID
+  Btype ;1- place for shopping; 2- place for leisuring
+  Space ;Space occupied, which determines the probability a consumer consuming here
+  Long ;longitude
+  Lat ;latitude
+  location-choice ;whether need to choose a location
+  Busi-size ;number of employees
+  emp-req ;number of employees required
+  flow ;Customner flow
+  age
+  closure ;number of consecutive years the growth rate reached the closure standard
+  dis-can
+
+  ; utility of businessman growth
+  Usize
+  Usizesq
+  Uage
+  Uflow
+]
+
+schools-own
+[
+  SchID ;ID of school
+  Long ;longitude
+  lat ;latitude
+  Stype ;Types of school, defined in configuration file "Education School.csv"
+  capacity ;The recommended maximum student capacity for each school, which can still accommodate additional students even if the limit is reached.
+  available-space; number of available spots for students
+  School-size ; number of employees
+  emp-req ;number of employees required
+  Num-student ;number of students in the school
+  dis-can
+]
+
+shoppings-own
+[
+  daytype ; Record the time of activity 1- weekday 2- weekend
+]
+
+leisures-own
+[
+  daytype ; Record the time of activity 1- weekday 2- weekend
 ]
 
 to setup
   clear-all
   setup-python
-
-  set year 2018
-  setup-agent
+  set year base-year
+  load-agent
   initialization
   print "initialization finished"
   if social-network
@@ -228,17 +484,7 @@ to setup
     generate-network
     print "network finished"
   ]
-  generate-daily-plan
-  print "daily plan finished"
   ask links [hide-link]
-
-  ask n-of 3000 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 1]
-  ask n-of 2500 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 2]
-  ask n-of 500 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 3]
-  ask n-of 200 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 4]
-  ask n-of 50 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 5]
-  ask n-of 5 people with [relationship = 1 and flexible = 0 and count in-purchase-neighbors = 1][set flexible 5]
-  ask n-of 1000 people with [relationship = 1 and flexible = 0 and count in-rent-neighbors = 1][set flexible 1]
   reset-ticks
   export-world (word year ".csv")
 end
@@ -264,55 +510,55 @@ to setup-python
     "import pandas as pd"
     "from sklearn.ensemble import RandomForestRegressor"
     "from sklearn.ensemble import RandomForestClassifier"
+    "from io import StringIO"
   )
 end
 
 to go
-  set labor-lastyear count people with [status = 2 or status = 3]
-  set transaction-rent 0 set transaction-purchase 0
+  set labor-last count people with [status = 2 or status = 3]
+;  set transaction-rent 0 set transaction-purchase 0
   set year year + 1
 
   ;Population dynamics model
-  immigration-model
-  emigration-model
-  ask people [set age age + 1]
-  education-model
-  employ-model
+  ask people [set age age + 1] ;age model
   income-model
-  marriage-model
-  divorce-model
   birth-model
   death-model
+  education-model
+  retirement-model
+  marriage-model
+  print count households with [count people with [hhd = [hhd] of myself and relationship = 1] = 0]
+  divorce-model
+  emigration-model
+  immigration-model
   if social-network [update-friend]
 
-  ;Residential location choice and real estate price model
+  ;Business occupier and school dynamics model
+  firm-dynamics-model
+  school-dynamics-model
+  Businessman-dynamics-model
+  labour-dynamics
+
+;  ;Residential location choice and real estate price model
   RLC-REP
+  FLC-CFP
+  BLC-CFP
 
-  ;Firmographic models
-  ask firms [set age age + 1]
-  firm-birth
-  firm-growth
-  firm-closure
-
-  ;Firm locationchoice and office building price model
-  FLC-OBP
-
-  ;other land use model
-  school-model
-  shop-model
+  building-development-model
+  output-data
   ask links [hide-link]
   tick
   export-world (word year ".csv")
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-524
+618
 10
-1084
-442
+1009
+402
 -1
 -1
-1.148
+2.38
 1
 10
 1
@@ -322,10 +568,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--240
-240
--184
-184
+-80
+80
+-80
+80
 1
 1
 1
@@ -333,9 +579,9 @@ ticks
 30.0
 
 BUTTON
-77
+23
 21
-143
+89
 54
 NIL
 setup
@@ -350,10 +596,10 @@ NIL
 1
 
 BUTTON
-174
-21
-237
-54
+101
+22
+164
+55
 NIL
 go
 NIL
@@ -369,7 +615,7 @@ NIL
 MONITOR
 23
 102
-212
+159
 147
 Number of Schools
 count schools
@@ -378,10 +624,10 @@ count schools
 11
 
 MONITOR
-1190
-208
-1305
-253
+21
+173
+136
+218
 Number of firms
 count firms
 17
@@ -389,10 +635,10 @@ count firms
 11
 
 MONITOR
-1166
-45
-1290
-90
+1181
+30
+1305
+75
 Number of people
 count people
 17
@@ -400,95 +646,9 @@ count people
 11
 
 MONITOR
-22
-239
-206
-284
-Number of residences
-count residences
-17
-1
-11
-
-SLIDER
-238
-110
-426
-143
-T-school-birth
-T-school-birth
-0
-1
-0.7
-0.05
-1
-NIL
-HORIZONTAL
-
-SLIDER
-19
-165
-207
-198
-T-school-increase
-T-school-increase
-0
-1
-0.7
-0.05
-1
-NIL
-HORIZONTAL
-
-SLIDER
-239
-164
-428
-197
-T-school-decrease
-T-school-decrease
-0
-1
-0.5
-0.05
-1
-NIL
-HORIZONTAL
-
-SLIDER
-18
-478
-212
-511
-T-rent-afford
-T-rent-afford
-0
-1
-0.6
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-254
-479
-443
-512
-T-purchase-afford
-T-purchase-afford
-0
-1
-0.6
-0.01
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1018
+632
 26
-1075
+689
 71
 Year
 Year
@@ -496,153 +656,22 @@ Year
 1
 11
 
-SLIDER
-18
-538
-211
-571
-Rent-prospect
-Rent-prospect
--1000
-1000
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
+MONITOR
+19
 254
-538
-444
-571
-Purchase-prospect
-Purchase-prospect
--10
-10
-0.007
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1158
-277
-1330
-310
-T-firm-move
-T-firm-move
-0
-10
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1376
-277
-1548
-310
-W-Move-rent
-W-Move-rent
-0
-1
-0.5
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1157
-331
-1329
-364
-W-Move-acc
-W-Move-acc
--1
-0
--0.5
-0.1
-1
-NIL
-HORIZONTAL
-
-MONITOR
-510
-478
-613
-523
-Number of CBs
-count CBs
+162
+299
+Number of Businessmen
+count Businessmen
 17
 1
 11
 
 MONITOR
-655
-478
-772
-523
-Number of shops
-count shops
-17
-1
-11
-
-SLIDER
-919
-605
-1091
-638
-T-shop-closure
-T-shop-closure
-0
-100
-4.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-506
-604
-680
-637
-T-CB-increase
-T-CB-increase
-0
-100
-9.8
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-715
-604
-887
-637
-T-CB-decrease
-T-CB-decrease
-0
-100
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1329
-45
-1460
-90
+1327
+30
+1458
+75
 Number of couples
 count couples
 17
@@ -650,10 +679,10 @@ count couples
 11
 
 MONITOR
-1494
-46
-1632
-91
+171
+102
+309
+147
 Number of students
 count people with [status = 1]
 17
@@ -661,10 +690,10 @@ count people with [status = 1]
 11
 
 MONITOR
-1166
-113
-1324
-158
+1485
+32
+1643
+77
 Number of Unemployees
 Count people with [status = 3]
 17
@@ -672,10 +701,10 @@ Count people with [status = 3]
 11
 
 MONITOR
-1345
-111
-1489
-156
+1181
+85
+1325
+130
 Number of employees
 count people with [status = 2]
 17
@@ -683,10 +712,10 @@ count people with [status = 2]
 11
 
 MONITOR
-1511
-112
-1649
-157
+1339
+86
+1477
+131
 Number of retirees
 count people with [status = 4]
 17
@@ -698,489 +727,56 @@ TEXTBOX
 77
 486
 103
----------------------School Model-------------------------
+---------------------School Dynamics Model-------------------------
 12
 0.0
 1
 
 TEXTBOX
-55
-215
-450
-233
----------------------Residence Model-------------------------
-12
-0.0
-1
-
-TEXTBOX
-590
-454
-1067
-473
-----------------------Commercial Building and Shop----------------------
-12
-0.0
-1
-
-TEXTBOX
-1159
-179
-1625
-197
-----------------------Office Building and Firm----------------------
-12
-0.0
-1
-
-MONITOR
-1410
-207
-1513
-252
-Number of OBs
-count OBs
-17
-1
-11
-
-TEXTBOX
-56
-598
-427
-650
----------------------Social Network--------------------
-12
-0.0
-1
-
-SLIDER
-248
-675
-448
-708
-W-age
-W-age
-0
-1
-0.41
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-20
-674
-216
-707
-W-gender
-W-gender
-0
-1
-0.1
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-21
-619
-215
-652
-W-education
-W-education
-0
-1
-0.2
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-248
-619
-449
-652
-W-income
-W-income
-0
-1
-0.24
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-506
-544
-678
-577
-W-shop-rent
-W-shop-rent
-0
-1
-0.25
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-715
-543
-887
-576
-W-shop-agg
-W-shop-agg
-0
-1
-0.24
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-918
-543
-1090
-576
-W-shop-traffic
-W-shop-traffic
-0
-1
-0.19
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-506
-662
-681
-695
-Max-CB-rent
-Max-CB-rent
-0
-2
-0.84
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-714
-663
-886
-696
-Min-CB-rent
-Min-CB-rent
--1
-0
--0.5
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-17
-361
-209
-394
-W-res-purchase-acc
-W-res-purchase-acc
-0
-1
-0.4
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-251
-364
-439
-397
-W-res-purchase-price
-W-res-purchase-price
-0
-1
-0.6
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-20
-723
-215
-756
-T-friend-break
-T-friend-break
-0
-1
-0.5
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1382
-498
-1554
-531
-T-OB-increase
-T-OB-increase
-1
-5
-1.97
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1159
-498
-1331
-531
-T-OB-decrease
-T-OB-decrease
-0
-01
-0.5
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1378
-331
-1550
-364
-W-move-space
-W-move-space
-0
-1
-0.55
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1158
-384
-1330
-417
-W-move-agg
-W-move-agg
--1
-0
--0.09
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1378
-386
-1550
+638
 419
-W-firm-loc-agg
-W-firm-loc-agg
--1
+1098
+445
+---------------------Real Estate Market Model-------------------------
+12
+0.0
 1
-0.7
-0.01
-1
-NIL
-HORIZONTAL
 
-SLIDER
-1159
-440
-1331
-473
-W-firm-loc-acc
-W-firm-loc-acc
-0
+TEXTBOX
+84
+234
+486
+260
+-----------Commercial Building and Commercial Establishment-------
+12
+0.0
 1
-0.5
-0.01
-1
-NIL
-HORIZONTAL
 
-SLIDER
-1380
-442
-1552
-475
-W-firm-loc-rent
-W-firm-loc-rent
--1
-0
--0.5
-0.01
+TEXTBOX
+61
+154
+434
+172
+---------------------Firm Dynamics Model----------------------
+12
+0.0
 1
-NIL
-HORIZONTAL
-
-SLIDER
-1159
-564
-1331
-597
-W-growth-size
-W-growth-size
--1
-1
-0.2
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1381
-561
-1553
-594
-W-growth-sizesq
-W-growth-sizesq
--1
-1
--0.05
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1159
-624
-1331
-657
-W-growth-acc
-W-growth-acc
--1
-0
--0.05
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1383
-625
-1555
-658
-W-growth-age
-W-growth-age
--1
-1
-0.2
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1161
-678
-1333
-711
-T-growth-upper
-T-growth-upper
-0
-1
-0.5
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1385
-681
-1557
-714
-T-growth-lower
-T-growth-lower
--1
-1
--0.15
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1163
-740
-1335
-773
-T-closure
-T-closure
-1
-2
-1.2
-0.01
-1
-NIL
-HORIZONTAL
 
 SWITCH
-247
-724
-402
-757
+1016
+105
+1158
+138
 Social-Network
 Social-Network
 1
 1
 -1000
 
-MONITOR
-1364
-733
-1467
-778
-mean capacity
-mean [capacity] of firms
-17
-1
-11
-
-MONITOR
-1492
-732
-1574
-777
-mean staff
-mean [count in-employee-neighbors] of firms
-17
-1
-11
-
 BUTTON
-288
+175
 22
-402
+289
 55
 NIL
 setup-python
@@ -1195,10 +791,10 @@ NIL
 1
 
 PLOT
-19
-784
-633
-1079
+1179
+150
+1680
+445
 Social Demographic Attributes
 year
 NIL
@@ -1226,119 +822,297 @@ PENS
 "IndividualMonthlyIncome-10~15k" 1.0 0 -5825686 true "" "plot count people with [status = 2 and income > 10000 and income <= 15000]"
 "IndividualMonthlyIncome-15~20k" 1.0 0 -2064490 true "" "plot count people with [status = 2 and income > 15000 and income <= 20000]"
 "IndividualMonthlyIncome-Above20k" 1.0 0 -16777216 true "" "plot count people with [status = 2 and income > 20000]"
-"HouseholdIncome" 1.0 0 -16777216 true "" "plot mean [hhd-income] of people with [relationship = 1]"
+"HouseholdIncome" 1.0 0 -16777216 true "" "plot mean [hhd-income] of households"
 
-SLIDER
+INPUTBOX
+529
 16
-419
-210
-452
-W-res-rent-acc
-W-res-rent-acc
-0
-1
-0.7
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-253
-420
-442
-453
-W-res-rent-price
-W-res-rent-price
-0
-1
-0.3
-0.01
-1
-NIL
-HORIZONTAL
-
-PLOT
-657
-782
-857
-932
-Land Use
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"tran-pur" 1.0 0 -16777216 true "" "plot transaction-purchase"
-"tran-rent" 1.0 0 -7500403 true "" "plot transaction-rent"
-
-SLIDER
-18
-307
-209
-340
-T-flexible-purchase
-T-flexible-purchase
-0
-10
-7.0
-1
-1
-NIL
-HORIZONTAL
-
-INPUTBOX
-237
-235
-314
-295
-Max-num-residences
-7.0
+604
+76
+Base-Year
+2018.0
 1
 0
 Number
 
-INPUTBOX
-330
-236
-413
-296
-Loss
-1.2
-1
+CHOOSER
+1016
+12
+1154
+57
+DailyPlan
+DailyPlan
+"Simple" "Typical" "Full"
 0
-Number
-
-SLIDER
-251
-308
-423
-341
-T-flexible-rent
-T-flexible-rent
-0
-100
-1.0
-1
-1
-NIL
-HORIZONTAL
 
 MONITOR
-457
-162
-514
-207
-move
-count people with [move = 1]
+317
+103
+434
+148
+School Capacity
+sum [capacity] of schools
 17
 1
 11
+
+MONITOR
+601
+446
+725
+491
+RF rental volume
+res-rent-transaction
+17
+1
+11
+
+MONITOR
+738
+446
+855
+491
+RF sales volume
+res-purchase-transaction
+17
+1
+11
+
+MONITOR
+867
+446
+991
+491
+RF average price
+ave-rf-price
+17
+1
+11
+
+MONITOR
+1005
+445
+1122
+490
+RF average rent
+ave-RF-rent
+17
+1
+11
+
+MONITOR
+601
+510
+732
+555
+CFF rental volume
+CFF-rent-transaction
+17
+1
+11
+
+MONITOR
+744
+510
+868
+555
+CFF avearga rent
+ave-cff-rent
+17
+1
+11
+
+MONITOR
+877
+510
+1008
+555
+CFB rental volume
+CFB-rent-transaction
+17
+1
+11
+
+MONITOR
+1012
+510
+1136
+555
+CFB average rent
+ave-CFB-rent
+17
+1
+11
+
+TEXTBOX
+1203
+10
+1714
+62
+----------------------Population Dynamics Model----------------------
+12
+0.0
+1
+
+MONITOR
+447
+103
+598
+148
+Employees of schools
+sum [school-size] of schools
+17
+1
+11
+
+MONITOR
+157
+173
+295
+218
+Employees of firms
+sum [firm-size] of firms
+17
+1
+11
+
+MONITOR
+174
+253
+387
+298
+Employees required by businessmen
+sum [emp-req] of businessmen
+17
+1
+11
+
+MONITOR
+394
+251
+549
+296
+Employees of businessmen
+sum [count in-employee-neighbors] of businessmen
+17
+1
+11
+
+MONITOR
+21
+306
+248
+351
+Average customer flow (leisure)
+ave-leisure-flow
+17
+1
+11
+
+MONITOR
+257
+306
+491
+351
+Average customer flow (shopping)
+ave-shopping-flow
+17
+1
+11
+
+MONITOR
+603
+574
+754
+619
+RF capacity
+sum [capacity] of rfs
+17
+1
+11
+
+MONITOR
+763
+575
+852
+620
+RF capacity
+sum [capacity] of RFs
+17
+1
+11
+
+MONITOR
+870
+577
+1021
+622
+CFF capacity
+sum [capacity] of cffs
+17
+1
+11
+
+MONITOR
+1036
+575
+1180
+620
+CFF available space
+sum [available-space] of CFFs
+17
+1
+11
+
+MONITOR
+603
+630
+754
+675
+CFB initial capacity
+sum [capacity] of CFBs
+17
+1
+11
+
+MONITOR
+763
+630
+901
+675
+CF available sapce
+sum [available-space] of CFBs
+17
+1
+11
+
+BUTTON
+299
+21
+417
+54
+Parameter Setting
+read-settings
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+1017
+65
+1156
+98
+Export-Attractiveness
+Export-Attractiveness
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1682,10 +1456,161 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.3.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="W-shop-rent">
+      <value value="0.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-firm-loc-rent">
+      <value value="-0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-growth-upper">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-rent-afford">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Base-Year">
+      <value value="2018"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-OB-increase">
+      <value value="1.97"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Loss">
+      <value value="1.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max-CB-rent">
+      <value value="0.84"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-income">
+      <value value="0.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-growth-sizesq">
+      <value value="-0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-gender">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-res-rent-acc">
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-firm-move">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-purchase-afford">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-closure">
+      <value value="1.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-CB-increase">
+      <value value="9.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-school-decrease">
+      <value value="0.55"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-shop-traffic">
+      <value value="0.19"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-res-purchase-price">
+      <value value="0.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-friend-break">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="DailyPlan">
+      <value value="&quot;Simple&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-Move-acc">
+      <value value="-0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-res-purchase-acc">
+      <value value="0.4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Rent-prospect">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-firm-loc-agg">
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Social-Network">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Firm-prospect">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-flexible-purchase">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-res-rent-price">
+      <value value="0.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Purchase-prospect">
+      <value value="-0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-growth-lower">
+      <value value="-0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Max-num-residences">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-OB-decrease">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-growth-age">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-move-agg">
+      <value value="-0.09"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-firm-loc-acc">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-age">
+      <value value="0.41"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-Move-rent">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-flexible-rent">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-growth-size">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-school-increase">
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Min-CB-rent">
+      <value value="-0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-shop-agg">
+      <value value="0.24"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-CB-decrease">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="T-school-birth">
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-move-space">
+      <value value="0.55"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-growth-acc">
+      <value value="-0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="W-education">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default

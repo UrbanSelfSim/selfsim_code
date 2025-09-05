@@ -145,7 +145,8 @@ to generate-full-new-plans [dur-weekday dur-weekend]
   [
     let activity item (i - 1) chain-weekday
     (ifelse 
-      activity = "home" [set plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence item (i - 1) dur-weekday) plan-weekday]
+      activity = "home" and i < num-weekday-act [set plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence item (i - 1) dur-weekday) plan-weekday]
+      activity = "home" and i = num-weekday-act [set plan-weekday lput (list "home" my-residence [long] of my-residence [lat] of my-residence) plan-weekday]
       activity = "work" [set plan-weekday lput (list "work" my-work [long] of my-work [lat] of my-work item (i - 1) dur-weekday) plan-weekday]
       activity = "education" [set plan-weekday lput (list "education" my-education [long] of my-education [lat] of my-education item (i - 1) dur-weekday) plan-weekday]
       activity = "shopping" 
@@ -178,7 +179,8 @@ to generate-full-new-plans [dur-weekday dur-weekend]
   [
     let activity item (i - 1) chain-weekend
     (ifelse 
-      activity = "home" [set plan-weekend lput (list "home" my-residence [long] of my-residence [lat] of my-residence item (i - 1) dur-weekend) plan-weekend]
+      activity = "home" and i < num-weekend-act [set plan-weekend lput (list "home" my-residence [long] of my-residence [lat] of my-residence item (i - 1) dur-weekend) plan-weekend]
+      activity = "home" and i = num-weekend-act [set plan-weekend lput (list "home" my-residence [long] of my-residence [lat] of my-residence) plan-weekend]
       activity = "shopping" 
       [
         let last-activity item 1 (item (i - 2) plan-weekend)

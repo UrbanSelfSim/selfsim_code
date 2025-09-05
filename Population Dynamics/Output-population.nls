@@ -1,0 +1,24 @@
+to output-population
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Full people list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Full people list " year ".csv")
+    file-print "pid, hhd, relationship, age, gender, income, education, edu-year, edu-year-required, status, livelong, livelat, welong, welat, vehicle-owner" 
+    ask people
+    [
+      file-print (word pid "," hhd "," relationship "," age "," gender "," income "," education "," edu-year "," edu-year-required "," status "," livelong "," livelat "," welong "," welat "," vehicle-owner)
+    ]
+
+    set filename (word "Full household list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Full household list " year ".csv")
+    file-print "hhd, hhd-size, hhd-income, mandatory, flexible, long, lat"
+    ask households
+    [
+      file-print (word hhd "," hhd-size "," hhd-income "," mandatory "," flexible "," long "," lat)
+    ]
+  ]
+  file-close-all
+end

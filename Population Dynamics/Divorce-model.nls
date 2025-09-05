@@ -1,0 +1,161 @@
+;Divorce simulates divorce dynamics within the population. 
+;The Divorce Model estimates the annual number of divorces based on historical data. 
+;Divorce rates for each simulation year can be predicted, for example, using statistical or machine learning models trained on past divorce trends. 
+;The model then dissolves partnerships and adjusts household structures accordingly.
+
+to divorce-model
+  ;Step 1: determine number of people get married 
+  let num-divorce item (year - base-year - 1) P-div 
+  
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Divorce " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Divorce " year ".csv")
+    file-print "hhd, original_family_size, husband_hhd, husband_hhd_size, wife_hhd, wife_hhd_size"
+  ]
+  
+  ;Step 2: select spouses to get divorced, and mark them with blue (husband) and pink (wife)
+  ask up-to-n-of num-divorce people with [gender = 0 and count in-spouse-neighbors = 1]
+  [
+    set color pink
+    ask one-of people with [spouse-neighbor? myself][set color blue]
+  ]  
+  ;step 3: spouses get divorced, and a family is divided into two. This means, husband or wife needs to be independent from their original household.
+  ;the rules to select one spouse to get divorce is: (1) the people with relationship = 2 or 13 will leave the original household (2) if neither wife's nor husband's relationship = 2 or 13, randomly choose one to leave
+  ask people with [color = pink]
+  [
+    let wife self
+    let husband one-of people with [spouse-neighbor? wife]
+    ;clear the relationship of spouses
+    ask wife [ask my-spouses [die]]
+  
+    let hhd1 max [hhd] of households + 1 ;create a new id of household
+    ask one-of households [hatch 1 [set hhd hhd1 set mandatory 1 set hhd-size 0 set hhd-income 0 set res 0 set flexible 0 set residence-size 0 set acc-current 0 set move 0]]
+    let hhd2 [hhd] of wife ;record the old id of household
+    let new-family 0 ;a local variable to record whether the family is divided
+    let original_family_size [hhd-size] of one-of households with [hhd = hhd2]
+  
+    ;people with relationship = 2 leave the original family
+    if ([relationship] of wife = 2 and new-family = 0) ;wife's relationship equals to 2
+    [
+      set new-family 1
+      ask wife [set hhd hhd1 set relationship 1]
+      ask people with [hhd = hhd2 and (relationship = 5 or relationship = 9 or relationship = 10)] [set hhd hhd1]  ;wife's parents and  groundparents will leave
+      let children2 people with [age < 18 and parent-neighbor? wife and parent-neighbor? husband]
+      if children2 != nobody
+      [
+        ask children2 ;Children under the age of 18 have a half chance of following and leaving
+        [
+          let p random-float 1 
+          if (p > 0.5) 
+          [
+            set hhd hhd1
+          ]
+        ]
+      ]
+      ask wife [update-relationship hhd1 wife]
+      ask one-of households with [hhd = [hhd] of husband] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+      ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+    ]
+  
+    if ([relationship] of husband = 2 and new-family = 0) ;husband's relationship equals to 2
+    [
+      set new-family 1
+      ask husband [set hhd hhd1 set relationship 1]
+      ask people with [hhd = hhd2 and (relationship = 5 or relationship = 9 or relationship = 10)] [set hhd hhd1]
+      let children2 people with [parent-neighbor? wife and parent-neighbor? husband and age < 18]
+      if children2 != nobody
+      [
+        ask children2 ;Children under the age of 18 have a half chance of following and leaving
+        [
+          let p random-float 1 
+          if (p > 0.5) 
+          [
+            set hhd hhd1
+          ]
+        ]
+      ]
+      ask husband [update-relationship hhd1 husband]
+      ask one-of households with [hhd = [hhd] of wife] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+      ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+    ]
+  
+    ;Son-in-law/daughter-in-law leaving
+    if ([relationship] of wife = 13 and new-family = 0) ;if relationship of wife is 13
+    [
+      set new-family 1
+      ask wife [set hhd hhd1 set relationship 1]
+      let children2 people with [parent-neighbor? wife and parent-neighbor? husband and age < 18]
+      if children2 != nobody
+      [
+        ask children2
+        [
+          let p random-float 1 
+          if (p > 0.5) 
+          [
+            set hhd hhd1
+          ]
+        ]
+      ]
+      ask wife [update-relationship hhd1 wife]
+      ask one-of households with [hhd = [hhd] of husband] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+      ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+    ]
+  
+    if ([relationship] of husband = 13 and new-family = 0) ;if relationship of wife is 13
+    [
+      ask husband [set hhd hhd1 set relationship 1]
+      let children2 people with [parent-neighbor? wife and parent-neighbor? husband and age < 18] 
+      if children2 != nobody
+      [
+        ask children2 
+        [
+          let p random-float 1 
+          if (p > 0.5) 
+          [
+            set hhd hhd1
+          ]
+        ]
+      ]
+      ask husband [update-relationship hhd1 husband]
+      ask one-of households with [hhd = [hhd] of wife] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+      ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+    ]
+  
+    if ([relationship] of wife != 1 and [relationship] of wife != 2 and [relationship] of wife != 13 and new-family = 0)  ;otherwise, randomly select one to leave
+    [ 
+      ifelse (random-float 1 > 0.5) ;p > 0.5 wife is selected；p<= 0.5 husband is slected
+      [
+        ask wife [set hhd hhd1 set relationship 1]
+        ask one-of households with [hhd = [hhd] of husband] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+        ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+      ]
+      [
+        ask husband [set hhd hhd1 set relationship 1]
+        ask one-of households with [hhd = [hhd] of wife] [set flexible flexible + 1 set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+        ask one-of households with [hhd = hhd1][set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12] 
+      ]
+    ]
+    
+    ;output information
+    if pop-output = 1
+    [
+      let husband_hhd [hhd] of husband
+      let husband_hhd_size [hhd-size] of one-of households with [hhd = [hhd] of husband]
+      let wife_hhd [hhd] of wife
+      let wife_hhd_size [hhd-size] of one-of households with [hhd = [hhd] of wife]
+      file-print (Word hhd2 "," original_family_size "," husband_hhd "," husband_hhd_size "," wife_hhd "," wife_hhd_size)
+    ]
+
+    set color white ask husband [set color white]
+  ]  
+  file-close-all
+  
+  ask people
+  [
+    if count households with [hhd = [hhd] of myself and mandatory = 1] = 1 [set color black]
+  ]
+  print "divorce model finished"
+end

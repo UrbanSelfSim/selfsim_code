@@ -1,0 +1,51 @@
+to output-firm
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Full firm list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Full firm list "year ".csv")
+    file-print "FID, Age, size-firm, acc, agg, long, lat, closure"
+    
+    ask firms 
+    [
+      file-print (Word FID "," Age "," size-firm "," acc "," agg "," long "," lat "," closure)
+    ]
+  ]
+  file-close-all
+end
+
+to output-businessman
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Full businessman list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Full businessman list "year ".csv")
+    file-print "BID, Category, Space, age, flow, busi-size, closure, long, lat"
+    
+    ask businessmen
+    [
+      file-print (Word BID "," Category "," Space "," age "," flow "," busi-size "," closure "," long "," lat)
+    ]
+  ]
+  file-close-all
+end
+
+to output-school
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Full school list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Full school list "year ".csv")
+    file-print "SchID,long,lat,stype,capacity,available-space,school-size,school-employee"
+    
+    ask schools
+    [
+      file-print (Word SchID "," long "," lat "," stype "," capacity "," spa-sch "," school-size "," lab-sch)
+    ]
+  ]
+  file-close-all
+end
+

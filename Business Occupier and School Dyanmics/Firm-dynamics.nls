@@ -1,0 +1,230 @@
+firms-own
+[
+  FID  ;ID of firm
+  Age ;age of firm
+
+  emp-req ;required number of employees
+  size-firm ;the number of employees  
+  closure ;for how many years the firm's growth rate of capacity is lower than the closure threshold
+  emp-closure ;
+
+  office-size
+  office-cost ;Office rent for this year
+  office-cost-last ;office rent of last year
+  office-cost-next ;office rent of next year
+  agg ;agglomeration
+  agg-last ;agglomeration last year
+  acc ;accessibility
+  acc-last ;accessibility last year
+  location-choice ;Should the company move to another office building
+  Long  ;longitude
+  Lat  ;latitude
+  R-uti-firm ;Utility of move to a CFF. If the value is greater than a threshold, the firm will move.
+
+  dis-can
+]
+
+;The Firm Dynamics Model is a sub-model used to simulate the life cycle of firms, including their birth, growth, and closure, representing the evolution of firms in a dynamic urban environment.
+;Firm Dynamics Model consists of three main stages: firm birth, firm growth, and firm closure. 
+;First, in the firm birth stage, an increase in the labor force in the Population Dynamics Model leads to the creation of new firms (Case 1) or the splitting off of subsidiaries from existing firms (Case 2). 
+;In the firm growth stage, the size of the firm for the next simulation step is influenced by internal factors, such as the current firm's age and size, and external factors, such as accessibility. 
+;Finally, in the firm closure stage, firms are closed based on two criteria: if the firm’s size reaches zero or if its growth rate continuously falls below a specified threshold. 
+to firm-dynamics-model
+  ask firms [set age age + 1]
+  firm-birth
+  firm-closure
+  firm-growth
+  print "firm dynamics finished"
+end
+
+to firm-birth
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Firm birth " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Firm birth "year ".csv")
+    file-print "FID, emp-req"
+  ]
+  ;There are two types of new firms: (1) start-ups; (2)branches of existing firms
+  ;branches of existing firms
+  create-firms round (B-pro-firm-exi * count firms)
+  [
+    set fid max [fid] of firms + 1
+    set age 0
+    set emp-req round (random-normal B-mean-firm B-std-firm)
+    if emp-req <= 0 [set emp-req 1]
+    set location-choice 1
+    
+    ;assign virtual attributes
+    set office-cost mean [CFFRent] of CFFs * emp-req
+    set office-cost-next office-cost
+    set acc mean [acc] of firms with [age != 0]
+    set agg mean [agg] of firms with [age != 0]
+    set long mean [long] of firms
+    set lat mean [lat] of firms
+    if bus-output = 1 [file-print (Word FID "," emp-req)]
+  ]
+  ;start ups
+  set labor-current count people with [status = 2 or status = 3]
+  if labor-current > labor-last
+  [
+    create-firms int (B-pro-lab * (labor-current - labor-last))
+    [
+      set fid max [fid] of firms + 1
+      set emp-req round (random-normal B-mean-firm B-std-firm) 
+      set age 0
+      set location-choice 1
+      
+      ;assign virtual attributes
+      set office-cost mean [CFFRent] of CFFs * emp-req
+      set office-cost-next office-cost
+      set acc mean [acc] of firms with [age != 0]
+      set agg mean [agg] of firms with [age != 0]
+      set long mean [long] of firms
+      set lat mean [lat] of firms
+      if bus-output = 1 [file-print (Word FID "," emp-req)]
+    ]
+  ]
+  file-close-all
+  ask firms [set color white set size 0.5]
+end
+
+
+to firm-growth   
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Firm growth " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/business and school/Firm growth " year ".csv")
+    file-print "FID, accessibility, age, previous_emp_req, new_emp_req, size_change"
+  ]
+  ask firms with [age != 0]
+  [
+    set size-firm count in-employee-neighbors
+    let emp-upper round (emp-req * B-up-firm + emp-req) ;set the upper limit
+    let emp-lower round (emp-req * B-low-firm + emp-req) ;set the lower limit
+    set emp-closure round (emp-req * B-SF-firm * B-low-firm + emp-req) ;the threshold of firm closure
+    let previous_size emp-req
+    
+    ;update required number of employees
+    set emp-req round (exp (B-coe-size-firm * ln size-firm + B-coe2-size-firm * ln size-firm * ln size-firm + B-coe-age-firm * age + B-coe-acc * acc))
+    ;Control the updated capacity within the upper and lower limits
+    (ifelse 
+      emp-req > emp-upper [set emp-req emp-upper]
+      emp-req < emp-lower [set emp-req emp-lower]
+      [set emp-req emp-req]
+    )
+    
+    if bus-output = 1
+    [
+      file-print (word FID "," acc "," age "," previous_size "," emp-req "," (emp-req - previous_size))
+    ]
+  ]
+  file-close-all
+end
+
+;firm closure
+to firm-closure
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Firm death " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Firm death " year ".csv")
+    file-print "FID, size"
+  ]
+  
+  ;Check if the required number of employees is below the threshold for closure
+  ask firms [ifelse emp-req < emp-closure [set closure closure + 1][set closure 0]]
+  
+  ask firms with [closure = B-clo-year-firm or (age > 0 and count in-employee-neighbors = 0)]  ;If the capacity is less than capacity closure for 3 consecutive years, or if the number of employees is 0, the firm will close
+  [
+    if bus-output = 1 [file-print (word FID "," count in-employee-neighbors)]
+    
+    ask in-employee-neighbors
+    [
+      ask my-employees [die]
+      set welong 0
+      set welat 0
+      set status 3
+      ;mark them with red
+      if color != black [set color red]
+      
+      set chain-weekday []
+      set chain-weekend []
+      set plan-weekday []
+      set plan-weekend []
+    ]
+
+    ;update the capacity of office building
+    ask in-rent-neighbors
+    [
+      set capacity capacity + [office-size] of myself
+    ]
+    die
+  ]
+  
+  file-close-all
+  
+ ;update daily plan
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Firm closure")
+    let filename (word "Firm closure list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Firm closure/Firm closure list " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"][file-print "PID,Weekday,Weekend"]
+  ]
+  
+  ask people with [color = red]
+  [
+    (ifelse
+      dailyplan = "Simple" []
+      dailyplan = "Typical" 
+      [
+        let target one-of people with [(status = 3 or status = 4) and length plan-weekday != 0 and color = white]
+        set chain-weekday [chain-weekday] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        generate-typical-new-plan  dur-weekday
+        if dai-output = "Always" [file-print (WORD PID "," Plan-weekday)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+      dailyplan = "Full" 
+      [
+        let target one-of people with [(status = 3 or status = 4) and length plan-weekday != 0 and color = white]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        let dur-weekend extract-duration [plan-weekend] of target
+        generate-full-new-plans dur-weekday dur-weekend
+        if dai-output = "Always" [file-print (WORD PID "," Plan-weekday "," Plan-weekend)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+    )
+    set color white
+  ]
+  
+  file-close
+  
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Firm closure/Firm closure list " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Firm closure/DailyPlan_FirmClo.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+end

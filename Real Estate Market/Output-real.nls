@@ -1,0 +1,47 @@
+to Output-CFB
+  if rea-output
+  [
+    let filefolder (word "Output Data/" year "/Real Estate")
+    let filename (word "Full CFB list "year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real Estate/Full CFB list "year ".csv")
+    file-print "CFBID, Long, Lat, Capacity, Available-space, CFBRent"
+  ]
+  ask CFBs
+  [
+    file-print (word CFBID "," Long "," Lat "," Capacity "," Available-space"," Rent-CFB)
+  ]
+  file-close-all
+end
+
+to Output-CFF
+  if rea-output
+  [
+    let filefolder (word "Output Data/" year "/Real Estate")
+    let filename (word "Full CFF list "year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real Estate/Full CFF list "year ".csv")
+    file-print "CFFID, Long, Lat, Capacity, Available-space, CFFRent"
+  ]
+  ask CFFs
+  [
+    file-print (word CFFID "," Long "," Lat "," Capacity "," Available-space"," CFFRent)
+  ]
+  file-close-all
+end
+
+to Output-RF
+  if rea-output
+  [
+    let filefolder (word "Output Data/" year "/Real Estate")
+    let filename (word "Full RF list "year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real Estate/Full RF list "year ".csv")
+    file-print "RID, Long, Lat, Capacity, Available-space, ResPrice, ResRent"
+  ]
+  ask RFs
+  [
+    file-print (word RID "," Long "," Lat "," Capacity "," Available-space "," ResPrice "," ResRent)
+  ]
+  file-close-all
+end

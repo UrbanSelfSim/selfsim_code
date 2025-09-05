@@ -1,0 +1,1084 @@
+RFs-own
+[
+  rid ;residential building ID
+  available-space
+  capacity
+  ResPrice ;sale price per unit
+  ResPrice-max
+  ResPrice-min
+  ResPrice-previous
+  Resrent ;rent per unit
+  Resrent-max
+  Resrent-min
+  ResRent-previous
+  purchaser-income ;average income of purchasers in this residential building
+  renter-income ;average income of renters in this residential building
+  long  ;longitude
+  lat  ;latitude
+  att-price ;attractiveness to candidate purchasers
+  att-rent ;attractiveness to candidate renters
+  surrounding-purchase ;purchasings of residential residences within N km
+  surrounding-rent ;rents of residential residences within N km
+]
+
+cpurchases-own
+[
+  CPID
+  total-utility ;total utility
+  accessibility ;utility of accessibility
+  cost ;cost utility
+  acc-pur
+  pri-pur
+]
+
+crents-own
+[
+  CRID
+  total-utility
+  acc-rent
+  pri-rent
+  accessibility
+  cost
+]
+
+;The Joint Residential Location Choice and Residential Facility Price Model simulates the decision-making process of household agents in searching for residential locations and how residential facility prices fluctuate during this selection process. 
+;The model outlines three key phases in the process of residential location selection and residential facility price.
+;First, it assesses whether a household agent needs to relocate and determines whether the relocation is mandatory or flexible. 
+;Second, it simulates the negotiation process between household agents and the residential facility agents, as well as the updating of housing prices. Third, it simulates the transaction process.
+
+to res-loc-cho
+  set res-purchase-transaction 0
+  set res-rent-transaction 0
+  
+  ask households [set hhd-size count people with [hhd = [hhd] of myself] if hhd-size = 0 [die]]
+  ask rfs [set ResRent-previous ResRent set ResPrice-previous ResPrice]
+
+  residence-attribute-update ;Update attributes of residential facilities (surrouding ResPrice and ResRent)
+  print "residence-attribute-update finished"
+  household-move-decision ;
+  print "household-move-decision finished"
+  
+  residence-location-choice ;Simulate households seek for candidates, and the negotiation between households and facility agent
+  
+  ;simute transaction
+  residence-transaction
+  ;for those people who do not purchase or rent a proper residential building in the last procedures, they will rent a residential building with the lowest rent.
+  mandatory-residence-renter
+  
+  update-dailyplan-mover
+  
+  ;for residential building with no capacity to enter the housing market, their purchasings and rents will change with the surrounding residential buildings
+  ask RFs with [color = black]
+  [
+    let purchase1 mean [ResPrice] of RFs in-radius neighborhood
+    if surrounding-purchase != 0 [set ResPrice round (ResPrice * (purchase1 / surrounding-purchase))]
+    let rent1 mean [ResRent] of RFs in-radius neighborhood
+    if surrounding-rent != 0 [set ResRent round (ResRent * (rent1 / surrounding-rent))]
+    set color white
+  ]
+  
+  ;output information
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Residential facility " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real estate/Residential facility " year ".csv")
+    file-print "RID, previous_price, new_price, price_change, previous_rent, new_rent, rent_change, ava_space, long, lat"
+    ask rfs [file-print (word RID "," ResPrice-previous "," ResPrice "," (ResPrice - ResPrice-previous) "," ResRent-previous "," ResRent "," (ResRent - ResRent-previous) "," available-space "," long "," lat)]
+    file-close-all
+  ]
+  
+  print "residence-model finished"
+end
+
+to residence-attribute-update
+  ask RFs
+  [
+    ;Calculate the average ResPrice and rent of houses in the surrounding N km (tentatively N is 2)
+    set surrounding-purchase mean [ResPrice] of RFs in-radius neighborhood
+    set surrounding-rent mean [ResRent] of RFs in-radius neighborhood
+    
+    ;update avearge income of purchasers and renters
+    ifelse count in-purchase-neighbors > 0 [set purchaser-income sum [hhd-income] of in-purchase-neighbors / sum [hhd-size] of in-purchase-neighbors] [set purchaser-income 0]
+    ifelse count in-rent-neighbors > 0 [set renter-income sum [hhd-income] of in-rent-neighbors / sum [hhd-size] of in-rent-neighbors][set renter-income 0]
+    ask RFs with [purchaser-income = 0][set purchaser-income [purchaser-income] of min-one-of RFs with [purchaser-income != 0] [distance myself]]
+    ask RFs with [renter-income = 0][set renter-income [renter-income] of min-one-of RFs with [renter-income != 0] [distance myself]]
+    ;update capacity
+    set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors
+    if available-space = 0 [set color black] ;this is to mark these residential building with no space, and then update their rents and ResResPrices with their surrouding residential building
+    
+    ;lower limit and upper limit
+    set ResPrice-max R-up-pri-RF * ResPrice
+    set ResPrice-min R-low-pri-RF * ResPrice
+    set ResRent-max R-up-Rent-RF * ResRent
+    set ResRent-min R-low-Rent-RF * ResRent
+  ]
+  
+  
+  ask crents [die]
+  ask cpurchases [die]  
+end
+
+to household-move-decision
+  ;Move decision  
+  ask households [set move 0]
+  
+  ask households with [mandatory = 1][set move 1]
+  ask households with [count in-rent-neighbors = 1 and mandatory = 0 and flexible >= R-move-rent][set move 1]
+  ask households with [count in-purchase-neighbors = 1 and mandatory = 0 and flexible >= R-move-pur][set move 1]
+  
+  ;step 2: update the accessibility   
+  ;Calculate accessibility of household
+  ifelse dailyplan = "Simple" or (dailyplan != "Simple" and complex-acc = 0)
+  [
+    ask households with [move = 1]
+    [
+      ask people with [hhd = [hhd] of myself]
+      [
+        if status = 1 and education != 0 
+        [
+          let distance1 distance one-of in-student-neighbors
+          if distance1 = 0 [set distance1 0.1] ;This operation is designed to prevent division by zero in the following formula.
+          set acc-current 1 / distance1
+        ]
+        if status = 2 
+        [
+          let distance1 distance one-of in-employee-neighbors
+          if distance1 = 0 [set distance1 0.1] ;This operation is designed to prevent division by zero in the following formula.
+          set acc-current 1 / distance1
+        ]
+      ]
+      ifelse count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0] = 0
+      [set acc-current 0]
+      [set acc-current sum [acc-current] of people with [hhd = [hhd] of myself] / (count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0])]
+    ]
+  ]
+  [
+    ;(Typical or Full daily plan) & complex acc
+    ;output household information
+    let filefolder (word "Output Data/" Year "/Accessibility/ACC Calculation/Input/home_first_round")
+    let filename "Housing_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output Data/" Year "/Accessibility/ACC Calculation/Input/home_first_round/housing_processed.csv")
+    file-print "hh_id,live_location,hh_people,hh_income"
+    ask households with [move = 1 and mandatory = 0]
+    [
+      let hh_id (word hhd "_" [RID] of one-of in-link-neighbors)
+      file-print (Word hh_id","(word "POINT ("Long" "Lat")")","hhd-size","hhd-income)
+    ]
+    file-close
+
+    ;output person information
+    set filename "person_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output Data/" Year "/Accessibility/ACC Calculation/Input/home_first_round/person_processed.csv")
+    file-print "unique_id, hh_id,	work_point,job,ff_id"
+    ask households with [move = 1 and mandatory = 0]
+    [
+      ask people with [hhd = [hhd] of myself]
+      [
+        let work_point " "
+        let ff_id " "
+        let job " "
+        if status = 1 and education > 0 
+        [
+          let my-we one-of in-student-neighbors
+          set ff_id [who] of my-we
+          set work_point (word "POINT ("[Long] of my-we" "[Lat] of my-we")") set job "school"
+        ]
+        if status = 2 
+        [
+          let my-we one-of in-employee-neighbors
+          set ff_id [who] of my-we
+          (ifelse
+            [breed] of my-we = firms [set job "firm"]
+            [breed] of my-we = businessmen [set job "businessman"]
+            [breed] of my-we = schools [set job "school"]
+          )
+          set work_point (word "POINT ("[Long] of my-we" "[Lat] of my-we")")
+        ]
+        let my-household one-of households with [hhd = [hhd] of myself]
+        let hh_id (word hhd "_" [RID] of one-of rfs with [link-neighbor? my-household])
+        file-print (Word pid","hh_id","work_point","job","ff_id)
+      ]
+    ]
+    file-close
+    
+    ;output weekday activity
+    set filename "weekday_plan_with_location.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" Year "/ACC Calculation/Input/home_first_round/weekday_plan_with_location.csv")
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    ask households with [move = 1 and mandatory = 0]
+    [
+      ask people with [hhd = [hhd] of myself]
+      [
+        let num-activity length plan-weekday
+        let j 1
+        while [j < num-activity]
+        [
+          let my-household one-of households with [hhd = [hhd] of myself]
+          let hh_id (word hhd "_" [RID] of one-of rfs with [link-neighbor? my-household])
+          let a1 item (j - 1) plan-weekday
+          let tt_o_purpose item 0 a1
+          let tt_mode item 5 a1
+          let a2 item j plan-weekday
+          let tt_d_purpose item 0 a2
+          let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+          let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+          file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""Weekday")
+          set j j + 1
+        ]
+      ]
+    ]
+    file-close
+    
+    if dailyplan = "Full"
+    [
+      ;output weekend activity
+      set filename "weekend_plan_with_location.csv"
+      clear-file filefolder filename
+      file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+      ask households with [move = 1 and mandatory = 0]
+      [
+        ask people with [hhd = [hhd] of myself]
+        [
+          let num-activity length plan-weekday
+          let j 1
+          while [j < num-activity]
+          [
+            let my-household one-of households with [hhd = [hhd] of myself]
+            let hh_id (word hhd "_" [RID] of one-of rfs with [link-neighbor? my-household])
+            let a1 item (j - 1) plan-weekday
+            let tt_o_purpose item 0 a1
+            let tt_mode item 5 a1
+            let a2 item j plan-weekday
+            let tt_d_purpose item 0 a2
+            let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+            let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+            file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""Weekend")
+            set j j + 1
+          ]
+        ]
+      ]
+      file-close
+    ]
+    
+    (py:run
+      "args = ['python', 'Accessibility/ACC_alculation.py', 'full_daily_plan', 'home']"
+      "subprocess.run(args)"
+    )
+    
+    file-open (word "Output/" Year "/ACC Calculation/Output/home_first_round/weekday_plan_with_location.csv")
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "hh_id"
+      [
+        let hhd1 item 0 data
+        ask one-of households with [hhd = hhd1][set acc-current item 2 data]
+      ]
+    ]
+    file-close
+  ]
+  
+  ask households with [mandatory = 1][set acc-current mean [acc-current] of households with [mandatory = 0 and move = 1]]
+  
+  ;Determine whether to purchase or rent a residence: move = 1 purchase move = 2 rent
+  ask households with [move = 1]
+  [
+    let ave-hhd-income hhd-income / hhd-size
+    if count RFs with [capacity >= [hhd-size] of myself and ave-hhd-income / purchaser-income > R-aff-pur] = 0 [set move 2]
+  ]
+end
+
+to residence-location-choice    
+  ;Step 1: candidate selection
+  ;1) seek for candidates for purchasing
+  ask households with [move = 1]
+  [
+    ask up-to-n-of R-can-res RFs with [available-space >= [hhd-size] of myself and purchaser-income * R-aff-pur <= ([hhd-income] of myself / [hhd-size] of myself) and not link-neighbor? myself][create-cpurchase-with myself ask one-of my-cpurchases with [CPID = 0][set CPID max [CPID] of cpurchases + 1]]
+  ]
+  ;2) seek for candidates for renting
+  ask households with [move = 2]
+  [
+    ask up-to-n-of R-can-res RFs with [available-space >= [hhd-size] of myself and renter-income * R-aff-rent <= ([hhd-income] of myself / [hhd-size] of myself) and not link-neighbor? myself][create-crent-with myself ask one-of my-crents with [CRID = 0][set CRID max [CRID] of crents + 1]]
+  ]
+  
+  
+  ;Step 2: score and negotiation
+  ;Step 2.1 calculate utility of accessibility of candidates
+  ifelse dailyplan = "Simple" or (dailyplan != "Simple" and complex-acc = 0)
+  [
+    ask households with [move = 1]
+    [
+      let purchaser self
+      ask my-cpurchases
+      [
+        let candidate other-end
+        let distance1 0
+        ask people with [hhd = purchaser]
+        [
+          if status = 1 and education != 0 
+          [
+            ask one-of in-student-neighbors [set distance1 distance candidate]
+            if distance1 = 0 [set distance1 1] ;This is designed to prevent division by zero in the following formula.
+            set acc-candidate 1 / distance1
+          ]
+          if status = 2 
+          [
+            ask one-of in-employee-neighbors [set distance1 distance candidate]
+            if distance1 = 0 [set distance1 1] ;This is designed to prevent division by zero in the following formula.
+            set acc-candidate 1 / distance1
+          ]
+        ]
+      ]
+      ifelse count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0] = 0
+      [set acc-current 0]
+      [set acc-current sum [acc-current] of people with [hhd = [hhd] of myself] / (count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0])]
+    ]
+    
+    ask households with [move = 2]
+    [
+      let renter self
+      ask my-crents
+      [
+        let candidate other-end
+        let distance1 0
+        ask people with [hhd = renter]
+        [
+          if status = 1 and education != 0 
+          [
+            ask one-of in-student-neighbors [set distance1 distance candidate]
+            if distance1 = 0 [set distance1 1] ;This is designed to prevent division by zero in the following formula.
+            set acc-candidate 1 / distance1
+          ]
+          if status = 2 
+          [
+            ask one-of in-employee-neighbors [set distance1 distance candidate]
+            if distance1 = 0 [set distance1 1] ;This is designed to prevent division by zero in the following formula.
+            set acc-candidate 1 / distance1
+          ]
+        ]
+      ]
+      ifelse count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0] = 0
+      [set acc-current 0]
+      [set acc-current sum [acc-current] of people with [hhd = [hhd] of myself] / (count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0])]
+    ]
+  ]
+  [
+    ;generate housing file
+    let filefolder (word "Output/" Year "/ACC Calculation/Input/home_second_round")
+    let filename "housing_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/housing_processed.csv")
+    file-print "hh_id,live_location,hh_people,hh_income"
+    file-close
+    
+    ;generate person file
+    set filename "person_processed.csv"
+    clear-file filefolder filename
+    file-print "hh_id,	unique_id,work_point,job,ff_id"
+    file-close
+    
+    ;generate weekday file
+    set filename "weekday_plan_with_location.csv"
+    py:set "filename" filename
+    clear-file filefolder filename
+    file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/housing_processed/weekday_plan_with_location.csv")
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    file-close
+    
+    if dailyplan = "Full"
+    [
+      ;generate weekend file
+      set filename "weekend_plan_with_location.csv"
+      clear-file filefolder filename
+      file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/housing_processed/weekend_plan_with_location.csv")
+      file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+      file-close
+    ]
+    
+    ;output household & person information
+    ask households with [move = 1]
+    [
+      let hh_people hhd-size
+      let hh_income hhd-income
+      let hh hhd
+      let purchaser self
+      ask my-cpurchases
+      [
+        let candidate other-end
+        let hh_id (word hh "_" [RID] of candidate)
+        let live_location (word "POINT ("[Long] of candidate" "[Lat] of candidate")")
+        
+        ;output household information
+        file-open(word "Output/" Year "/ACC Calculation/Input/home_second_round/housing_processed.csv")
+        file-print (Word hh_id","live_location","hh_people","hh_income)
+        file-close
+        
+        ;output person information
+        file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/person_processed.csv")
+        ask people with [hhd = hh]
+        [
+          let work_point " "
+          let ff_id -1
+          let job " "
+          if status = 1 and education > 0 [let my-edu one-of in-student-neighbors set ff_id [who] of my-edu set work_point (word "POINT ("[Long] of my-edu" "[Lat] of my-edu")") set job "school"]
+          if status = 2 
+          [
+            let my-work one-of in-employee-neighbors
+            (ifelse
+              [breed] of my-work = firms [set job "firm"]
+              [breed] of my-work = businessmen [set job "businessman"]
+              [breed] of my-work = schools [set job "school"]
+            )
+            set ff_id [who] of my-work 
+            set work_point (word "POINT ("[Long] of my-work" "[Lat] of my-work")")
+          ]
+          file-print (Word hh_id","pid","work_point","job","ff_id)
+        ]
+        file-close
+        
+        ifelse dailyplan = "Typical"
+        [
+          ;output weekday activity
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekday_plan_with_location.csv")
+          ask people with [hhd = [hhd] of purchaser and length chain-weekday > 0]
+          [
+            generate-virtual-res-typical-plan candidate
+            let num-activity length vir-plan-weekday
+            let j 1
+            while [j < num-activity - 1]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+              set j j + 1
+            ]
+          ]
+          file-close
+        ]
+        [
+          ;output weekday & weekend activity
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekday_plan_with_location.csv")
+          ask people with [hhd = [hhd] of purchaser and length chain-weekday > 0]
+          [
+            generate-virtual-res-full-plan candidate
+            let num-activity length vir-plan-weekday
+            let j 1
+            while [j < num-activity]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy"," "weekday")
+              set j j + 1
+            ]
+          ]
+          file-close
+          
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekend_plan_with_location.csv")
+          ask people with [hhd = [hhd] of purchaser and length chain-weekend > 0]
+          [
+            let num-activity length vir-plan-weekend
+            let j 1
+            while [j < num-activity]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy"," tt_d_xy",""weekend")
+              set j j + 1
+            ]
+          ]
+          file-close
+        ]
+      ]
+    ]
+    
+    ;household 
+    ask households with [move = 2]
+    [
+      let hh_people hhd-size
+      let hh_income hhd-income
+      let hh hhd
+      let renter self
+      ask my-crents
+      [
+        let candidate other-end
+        let hh_id (word hh "_" [RID] of candidate)
+        let live_location (word "POINT ("[Long] of candidate" "[Lat] of candidate")")
+        
+        ;output household information
+        file-open(word "Output/" Year "/ACC Calculation/Input/home_second_round/housing_processed.csv")
+        file-print (Word hh_id","live_location","hh_people","hh_income)
+        file-close
+        
+        ;output person information
+        file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/person_processed.csv")
+        ask people with [hhd = hh]
+        [
+          let work_point " "
+          let ff_id -1
+          let job " "
+          if status = 1 and education > 0 [let my-edu one-of in-student-neighbors set ff_id [who] of my-edu set work_point (word "POINT ("[Long] of my-edu" "[Lat] of my-edu")") set job "school"]
+          if status = 2 
+          [
+            let my-work one-of in-employee-neighbors
+            (ifelse
+              [breed] of my-work = firms [set job "firm"]
+              [breed] of my-work = businessmen [set job "businessman"]
+              [breed] of my-work = schools [set job "school"]
+            )
+            set ff_id [who] of my-work 
+            set work_point (word "POINT ("[Long] of my-work" "[Lat] of my-work")")
+          ]
+          file-print (Word hh_id","pid","work_point","job","ff_id)
+        ]
+        file-close
+        
+        ifelse dailyplan = "Typical"
+        [
+          ;output weekday activity
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekday_plan_with_location.csv")
+          ask people with [hhd = [hhd] of renter and length chain-weekday > 0]
+          [
+            generate-virtual-res-typical-plan candidate
+            let num-activity length vir-plan-weekday
+            let j 1
+            while [j < num-activity - 1]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+              set j j + 1
+            ]
+          ]
+          file-close
+        ]
+        [
+          ;output weekday & weekend activity
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekday_plan_with_location.csv")
+          ask people with [hhd = [hhd] of renter and length chain-weekday > 0]
+          [
+            generate-virtual-res-full-plan candidate
+            let num-activity length vir-plan-weekday
+            let j 1
+            while [j < num-activity]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy"," "weekday")
+              set j j + 1
+            ]
+          ]
+          file-close
+          
+          file-open (word "Output/" Year "/ACC Calculation/Input/home_second_round/weekend_plan_with_location.csv")
+          ask people with [hhd = [hhd] of renter and length chain-weekend > 0]
+          [
+            let num-activity length vir-plan-weekend
+            let j 1
+            while [j < num-activity]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_o_xy (word "POINT (" (item 2 a1) " " (item 3 a1) ")")
+              let tt_mode item 4 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2) " " (item 3 a2) ")")
+              file-print (word hh_id","pid","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy"," tt_d_xy",""weekend")
+              set j j + 1
+            ]
+          ]
+          file-close
+        ]
+      ]
+    ]
+    
+    (py:run
+      "args = ['python', 'Accessibility/ACC_calculation.py', 'full_daily_plan', 'home']"
+      "subprocess.run(args)"
+    )
+    
+    file-open "Mobility and Accessibility/Output/acc_result/person_based/full_home.csv"
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "hh_id"
+      [
+        let hhd1 item 0 data
+        ask one-of households with [hhd = hhd1]
+        [
+          let target one-of RFs with [RID = item 4 data]
+          ask one-of my-links with [other-end = target]
+          [
+            set accessibility item 3 data 
+          ]
+        ]
+      ]
+    ]
+    file-close
+  ]
+  
+  ;calculate utility of accessibility
+  ask households with [move = 1][ask my-cpurchases [set acc-pur accessibility - [acc-current] of myself]]
+  ask households with [move = 2][ask my-crents [set acc-rent accessibility - [acc-current] of myself]]
+  ;standarlize utility of accessibility
+  ask cpurchases [set acc-pur acc-pur / max [abs acc-pur] of cpurchases]
+  ask crents [set acc-rent acc-rent / max [abs acc-rent] of crents]
+  
+  ;Step 2.3 simulate negotioations
+  ;Step 2.3.1 simulate the updation of price
+  let i 1
+  set ave-rf-price sum [ResPrice * capacity] of RFs / sum [capacity] of RFs
+  let increment R-neg-num-res + 1
+  while [i <= R-neg-num-res and increment > R-neg-pri-res]
+  [
+    if rea-output = 1
+    [
+      let filefolder (word "Output Data/" year "/Real Estate")
+      let filename (word year " RF attractiveness of purchasing " i ".csv")
+      clear-file filefolder filename
+      file-open (word "Output Data/" year "/Real Estate/ " year " RF attractiveness of purchasing " i ".csv")
+      file-print "RID,Attractiveness"
+    ]
+    ;1) score candidates
+    ask households with [move = 1]
+    [
+      let purchaser self
+      ask my-cpurchases
+      [
+        let candidate other-end
+        
+        ;calculate cost utility
+        let current-cost 0
+        ifelse count rfs with [purchase-neighbor? purchaser] > 0 [set current-cost [ResPrice] of one-of RFs with [purchase-neighbor? purchaser]][set current-cost mean [ResPrice] of RFs]
+        ;the purchaser is pur a residential facility
+        set pri-pur current-cost - [ResPrice] of candidate
+      ]
+    ]
+    
+    ask cpurchases
+    [
+      ;standarlize cost-u
+      set pri-pur pri-pur / max [abs pri-pur] of cpurchases
+      ;calculate total utility (a utility function related to accessibility and cost)
+      set total-utility 0
+      ifelse acc-pur > 0 [set total-utility R-wgt-acc-pur * acc-pur][set total-utility R-wgt-acc-pur * R-loss * acc-pur]
+      ifelse pri-pur > 0 [set total-utility total-utility + pri-pur * R-wgt-pri-pur][set total-utility (total-utility + R-loss * R-wgt-pri-pur * pri-pur)]
+    ]
+    
+    ;2) update price
+    ask RFs with [available-space > 0]
+    [
+      set att-Price 0
+      set att-Price sum [total-utility] of my-cpurchases / available-space
+      
+      if rea-output = 1
+      [
+        file-print (word RID "," att-price)
+      ]
+      (ifelse 
+        att-Price > R-inc-pur [set ResPrice round (ResPrice * (1 + R-pro-inc-pri)) if ResPrice > ResPrice-max [set ResPrice ResPrice-max]] ;ResPrice increases
+        att-Price < R-dec-pur [set ResPrice round (ResPrice * (1 - R-pro-dec-pri)) if ResPrice < ResPrice-min [set ResPrice ResPrice-min]] ;ResPrice decreases
+        [] ;ResPrice stay static
+      )
+    ]
+    file-close
+    
+    ;calculate increment of residential facility price
+    set ave-rf-price-last ave-rf-price
+    set ave-rf-price sum [ResPrice * capacity] of RFs / sum [capacity] of RFs
+    set increment abs ((ave-rf-price - ave-rf-price-last) / ave-rf-price-last)
+    set i i + 1
+  ]
+  
+  ;Step 2.3.2 simulating the updation of rent
+  set i 1
+  set ave-rf-rent sum [ResRent * capacity] of RFs / sum [capacity] of RFs
+  set increment R-neg-pri-res + 1
+  while [i <= R-neg-num-res and increment > R-neg-pri-res]
+  [
+    if rea-output = 1
+    [
+      let filefolder (word "Output Data/" year "/Real Estate")
+      let filename (word year " RF attractiveness of renting " i ".csv")
+      clear-file filefolder filename
+      file-open (word "Output Data/" year "/Real Estate/" year " RF attractiveness of renting " i ".csv")
+      file-print "RID,Attractiveness"
+    ]
+    
+    set ave-rf-rent sum [ResRent * capacity] of RFs / sum [capacity] of RFs
+    ;1) score candidates
+    ask households with [move = 2]
+    [
+      let renter self
+      ask my-crents
+      [
+        let candidate other-end
+        ;calculate accessibility
+        
+        ;cost
+        let current-cost 0
+        ifelse count RFs with [rent-neighbor? renter] > 0 [set current-cost [ResRent] of one-of rfs with [rent-neighbor? renter]][set current-cost mean [ResRent] of RFs]
+        ifelse [ResRent] of candidate > current-cost [set pri-rent ( - [ResRent] of candidate / current-cost)][set pri-rent current-cost / [ResRent] of candidate]
+        ;utility
+        set total-utility 0
+        ifelse acc-rent > 0 [set total-utility R-wgt-acc-rent * acc-rent][set total-utility R-wgt-acc-rent * R-loss * acc-rent]
+        ifelse pri-rent > 0 [set total-utility total-utility + pri-rent * R-wgt-pri-rent][set total-utility (total-utility + R-loss * R-wgt-pri-rent * pri-rent)]
+      ]
+    ]
+    
+    ask RFs with [available-space > 0]
+    [
+      set Att-rent sum [total-utility] of my-crents / available-space
+      if rea-output = 1
+      [
+        file-print (word RID "," Att-rent)
+      ]
+      (ifelse
+        Att-rent > R-inc-rent [set ResRent ResRent * (1 + R-pro-inc-rent) if ResRent > ResRent-max [set ResRent ResRent-max]]
+        Att-rent < R-dec-rent [set ResRent ResRent * (1 - R-pro-dec-rent) if ResRent < ResRent-min [set ResRent ResRent-min]]
+        []
+      )
+    ]
+    file-close
+    set i i + 1
+    set ave-rf-rent sum [ResRent * capacity] of RFs / sum [capacity] of RFs
+    set increment abs ((ave-rf-rent - ave-rf-rent-last) / ave-rf-rent-last)
+  ]
+end
+
+to residence-transaction
+  ;Transaction order: purchasing > rent; mandatory > flexible
+  
+  ;output information
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Moving household " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/real estate/Moving household " year ".csv")
+    file-print "hhd, previous_rf, previous_ownership, new_rf, new_ownership, long, lat"
+  ]
+  
+  ask cpurchases with [total-utility < R-exp-hou-pur][die]
+  
+  ;Simulate transaction of households with mandatory trigger who decide to purchase a residence
+  while [count households with [mandatory = 1 and count my-cpurchases > 0] > 0]
+  [
+    ask one-of households with [mandatory = 1 and count my-cpurchases > 0]
+    [
+      set res-purchase-transaction res-purchase-transaction + 1
+      let previous_rf "Null"
+      let previous_ownership 0
+      if count in-purchase-neighbors = 1 [set previous_rf [RID] of one-of in-purchase-neighbors set previous_ownership 1]
+      if count in-rent-neighbors = 1 [set previous_rf [RID] of one-of in-rent-neighbors set previous_ownership 0]
+      ask my-purchases [die]
+      ask my-rents [die]
+      
+      ;ResPrice candidates with the highest utility 
+      let target-cpurchase max-one-of my-cpurchases [total-utility] ;record the candidates with the highest utility as 'task'
+      let target nobody
+      ask target-cpurchase [set target other-end]
+      create-purchase-with target ;create a 'purchase (link)' between the target and purchaser, meaning purchaser has purchased the residential building
+      ask my-cpurchases [die] ;clear all candidates
+      set residence-size hhd-size ;update residence size
+      set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
+      set long [long] of target set lat [lat] of target
+     
+      ;housing move
+      ask people with [hhd = [hhd] of myself]
+      [
+        set livelong [long] of target
+        set livelat [lat] of target
+        move-to target
+        ;clear shopping and leisuring activities occurs around previous residential location
+        if color != black [set color yellow]
+      ]
+      
+      ;residential buildings update their capacity.
+      ask target
+      [
+        set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors
+        ask my-cpurchases with [[capacity] of myself < [hhd-size] of other-end][die] ;if capacity of a residential building is lower than the hhd-size of family members of a purchaser, it will be removed from the candidates by the purchaser
+        ask my-crents with [[capacity] of myself < [hhd-size] of other-end][die]
+      ]
+      
+      if rea-output = 1 [file-print (word hhd "," previous_rf "," previous_ownership "," [RID] of target "," 1 )]
+    ]
+  ]
+  
+  ;Simulate transaction of households with flexible trigger who decide to purchase a residence
+  while [count households with [count my-cpurchases > 0] > 0]
+  [
+    ask one-of households with [count my-cpurchases > 0]
+    [
+      set res-purchase-transaction res-purchase-transaction + 1
+      let previous_rf "Null"
+      let previous_ownership 0
+      if count in-purchase-neighbors = 1 [set previous_rf [RID] of one-of in-purchase-neighbors set previous_ownership 1]
+      if count in-rent-neighbors = 1 [set previous_rf [RID] of one-of in-rent-neighbors set previous_ownership 0]
+      ask my-purchases [die]
+      ask my-rents [die]
+      
+      ;ResPrice candidates with the highest utility 
+      let target-cpurchase max-one-of my-cpurchases [total-utility] ;record the candidates with the highest utility as 'task'
+      let target nobody
+      ask target-cpurchase [set target other-end]
+      create-purchase-with target ;create a 'purchase (link)' between the target and purchaser, meaning purchaser has purchased the residential building
+      ask my-cpurchases [die] ;clear all candidates
+      set residence-size hhd-size ;update residence size
+      set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
+      set long [long] of target set lat [lat] of target
+     
+      ;housing move
+      ask people with [hhd = [hhd] of myself]
+      [
+        set livelong [long] of target
+        set livelat [lat] of target
+        move-to target
+        if color != black [set color yellow]
+      ]
+      
+      ;residential buildings update their capacity.
+      ask target
+      [
+        set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors
+        ask my-cpurchases with [[capacity] of myself < [hhd-size] of other-end][die] ;if capacity of a residential building is lower than the hhd-size of family members of a purchaser, it will be removed from the candidates by the purchaser
+        ask my-crents with [[capacity] of myself < [hhd-size] of other-end][die]
+      ]
+      
+      if rea-output = 1 [file-print (word hhd "," previous_rf "," previous_ownership "," [RID] of target "," 1 )]
+    ]
+  ]
+  
+  ask crents with [total-utility < R-exp-hou-rent][die]
+  ;Simulate transaction of households with mandatory trigger who decide to rent a residence
+  while [count households with [mandatory = 1 and count my-crents > 0] > 0]
+  [
+    ask one-of households with [mandatory = 1 and count my-crents > 0]
+    [
+      set res-rent-transaction res-rent-transaction + 1
+      let previous_rf "Null"
+      let previous_ownership 0
+      if count in-purchase-neighbors = 1 [set previous_rf [RID] of one-of in-purchase-neighbors set previous_ownership 1]
+      if count in-rent-neighbors = 1 [set previous_rf [RID] of one-of in-rent-neighbors set previous_ownership 0]
+      ask my-purchases [die]
+      ask my-rents [die]
+      
+      ;ResPrice candidates with the highest utility 
+      let target-crent max-one-of my-crents [total-utility] ;record the candidates with the highest utility as 'task'
+      let target nobody
+      ask target-crent [set target other-end]
+      create-rent-with target ;create a 'purchase (link)' between the target and purchaser, meaning purchaser has purchased the residential building
+      ask my-crents [die] ;clear all candidates
+      set residence-size hhd-size ;update residence size
+      set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
+     
+      ;housing move
+      ask people with [hhd = [hhd] of myself]
+      [
+        set livelong [long] of target
+        set livelat [lat] of target
+        move-to target
+        if color != black [set color yellow]
+      ]
+      
+      ;residential buildings update their capacity.
+      ask target
+      [
+        set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors
+        ask my-crents with [[capacity] of myself < [hhd-size] of other-end][die]
+      ]
+      
+      if rea-output = 1 [file-print (word hhd "," previous_rf "," previous_ownership "," [RID] of target "," 0 )]
+    ]
+  ]
+  
+  ;Simulate transaction of households with flexible triggers who decide to rent a residence
+  while [count households with [count my-crents > 0] > 0]
+  [
+    ask one-of households with [count my-crents > 0]
+    [
+      set res-rent-transaction res-rent-transaction + 1
+      let previous_rf "Null"
+      let previous_ownership 0
+      if count in-purchase-neighbors = 1 [set previous_rf [RID] of one-of in-purchase-neighbors set previous_ownership 1]
+      if count in-rent-neighbors = 1 [set previous_rf [RID] of one-of in-rent-neighbors set previous_ownership 0]
+      ask my-purchases [die]
+      ask my-rents [die]
+      
+      ;ResPrice candidates with the highest utility 
+      let target-crent max-one-of my-crents [total-utility] ;record the candidates with the highest utility as 'task'
+      let target nobody
+      ask target-crent [set target other-end]
+      create-rent-with target ;create a 'purchase (link)' between the target and purchaser, meaning purchaser has purchased the residential building
+      ask my-crents [die] ;clear all candidates
+      set residence-size hhd-size ;update residence size
+      set mandatory 0 set flexible 0 set move 0;Transaction completed successfully, triggers becomes 0
+     
+      ;housing move
+      ask people with [hhd = [hhd] of myself]
+      [
+        set livelong [long] of target
+        set livelat [lat] of target
+        move-to target
+        if color != black [set color yellow]
+      ]
+      
+      ;residential buildings update their capacity.
+      ask target
+      [
+        set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors
+        ask my-crents with [[capacity] of myself < [hhd-size] of other-end][die]
+      ]
+       if rea-output = 1 [file-print (word hhd "," previous_rf "," previous_ownership "," [RID] of target "," 0 )]
+    ]
+  ]
+end
+
+
+to mandatory-residence-renter
+  ;If no suitable building is found in above price or renting behviors, household with mandatory trigger will rent the building with the lowest rent on the market.
+  ask households with [mandatory = 1]
+  [
+    let previous_rf "Null"
+    let previous_ownership 0
+    if count in-purchase-neighbors = 1 [set previous_rf [RID] of one-of in-purchase-neighbors set previous_ownership 1]
+    if count in-rent-neighbors = 1 [set previous_rf [RID] of one-of in-rent-neighbors set previous_ownership 0]
+
+    set res-rent-transaction res-rent-transaction + 1
+    ask my-purchases [die] ask my-rents [die]
+    let target min-one-of RFs with [available-space >= [hhd-size] of myself] [ResRent]
+    create-rent-with target
+    set residence-size hhd-size
+    ask people with [hhd = [hhd] of myself]
+    [
+      set livelong [long] of target
+      set livelat [lat] of target
+      move-to target
+      set color yellow
+    ]
+    set mandatory 0 set flexible 0 set move 0 
+    ask target [set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]
+    if rea-output = 1 [file-print (word hhd "," previous_rf "," previous_ownership "," [RID] of target "," 0 )]
+  ]
+  file-close-all
+end
+
+
+to update-dailyplan-mover  
+  (ifelse
+    DailyPlan = "Simple" []
+    DailyPlan = "Typical" 
+    [
+      ;file-print "PID, Weekday"
+      ask people with [color = yellow]
+      [
+        let my-household one-of households with [hhd = [hhd] of myself]
+        let new-loc one-of RFs with [link-neighbor? my-household]
+        ; if the person is a student/employee, and is not a immigrant
+        if (status = 1 or status = 2) and welong != 0 and welat != 0 [residential-change-typical new-loc vehicle-owner]
+        ; if the person is an unemployee or a retiree
+        if (status = 3 or status = 4) [residential-change-typical new-loc vehicle-owner]
+      ]
+    ]
+    ;dailyplan = "full"
+    [
+      ;file-print "PID, Weekday, Weekend"
+      ask people with [color = yellow]
+      [
+        let my-household one-of households with [hhd = [hhd] of myself]
+        let new-loc one-of RFs with [link-neighbor? my-household]
+        ; if the person is a student/employee, and is not a immigrant
+        if (status = 1 or status = 2) and welong != 0 and welat != 0 [residential-change-full new-loc vehicle-owner]
+        ; if the person is an unemployee or a retiree
+        if (status = 3 or status = 4) [residential-change-full new-loc vehicle-owner]
+      ]
+    ]
+  )
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/RLC-REP")
+    let filename (word "Moving people " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/RLC-REP/Moving people " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"][file-print "PID,Weekday,Weekend"]
+  ]
+  
+  ask people with [color = yellow]
+  [
+    set color white 
+    if dai-output = "Always" and dailyplan != "Simple" and length plan-weekday > 0
+    [
+      ifelse dailyplan = "Typical" [file-print (word PID "," plan-weekday)][file-print (word PID "," plan-weekday "," plan-weekend)]
+    ]
+    if dai-output = "Year-End" [set plan-changed 1]
+  ]
+  
+  ;generate daily plan for people in newly formed households
+  generate-dailyplan-new-households
+  
+  ask people with [color = black]
+  [
+    set color white
+    if dai-output = "Always" and dailyplan != "Simple"  and length plan-weekday > 0
+    [
+      file-open (word "Output Data/" year "/Human mobility/RLC-REP/Moving people " year ".csv")
+      ifelse dailyplan = "Typical" [file-print (word PID "," plan-weekday)][file-print (word PID "," plan-weekday "," plan-weekend)]
+    ]
+    if dai-output = "Year-End" [set plan-changed 1]
+  ]
+  
+  file-close-all
+  
+  ;update daily plan
+  if dai-output = "Always"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/RLC-REP/Moving people " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/RLC-REP/DailyPlan_Res.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+end
+

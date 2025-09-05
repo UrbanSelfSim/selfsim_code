@@ -1,0 +1,172 @@
+to initialize-agent-attributes
+  ;Firm
+  ask firms
+  [
+    ; Update agglomeration
+    set agg sum [count in-employee-neighbors] of other firms in-radius neighborhood
+    if agg = 0 [set agg 1] ;In test cases, most firms have agg = 0, which prevents further calculations, so assign a value of 1
+  ]
+  ;update accessibility     
+  ifelse dailyplan = "Simple" or Complex-Acc = 0
+  [
+    ask firms
+    [
+      ask in-employee-neighbors [set dis-cur distance myself if dis-cur = 0 [set dis-cur 0.1]]
+      set acc 1 / sum [dis-cur] of in-employee-neighbors * count in-employee-neighbors
+    ]
+  ]
+  ;(dailyplan = "Typical" or dailyplan = "Full" ) and complex-acc = 1
+  [
+    ;output household information
+    let filefolder (word "Output Data/" year "/Acc Calculation/Input/work_first_round")
+    let filename "housing_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Acc Calculation/Input/work_first_round/housing_processed.csv")
+    file-print "hh_id,live_location,hh_people,hh_income"
+    ask firms
+    [
+      ask in-employee-neighbors [ask one-of households with [hhd = [hhd] of myself][set color red]]
+    ]
+    ask households with [color = red]
+    [
+      file-print (Word hhd"," (word "POINT ("Long" "Lat")") "," hhd-size","hhd-income)
+    ]
+    file-close
+    ask households [set color white]
+
+    ;output person information
+    set filename "person_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Acc Calculation/Input/work_first_round/person_processed.csv")
+    file-print "unique_id, hh_id, job,ff_id, work_point"
+    ask firms
+    [
+      let my-CFFID [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let ff_id (word [who] of myself "_" my-CFFID)
+        let unique_id (word PID "_" my-CFFID)
+        let work_point (word "POINT ("[Long] of myself" "[Lat] of myself")")
+        file-print (word unique_id","hhd",""firm"","ff_id","work_point)
+      ]
+    ]
+    file-close
+    
+    ;output weekday daily plan
+    set filename "weekday_plan_with_location.csv"
+    py:set "filename" filename
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Acc Calculation/Input/work_first_round/weekday_plan_with_location.csv")
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    ask firms
+    [
+      let my-CFFID [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let num-activity length plan-weekday
+        let j 1
+        while [j < num-activity]
+        [
+          let hh_id hhd
+          let unique_id (word pid "_" my-CFFID)
+          let a1 item (j - 1) plan-weekday
+          let tt_o_purpose item 0 a1
+          let tt_mode item 5 a1
+          let a2 item j plan-weekday
+          let tt_d_purpose item 0 a2
+          let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+          let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+          file-print (word hh_id","unique_id","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+          set j j + 1
+        ]
+      ]
+    ]
+    file-close
+  
+    ;calculate accessibility by python
+    py:set "studyarea" Study-Area
+    py:set "baseyear" (word base-year)
+    (py:run
+      "args = ['python', 'Accessibility/ACC_calculation.py', 'full_daily_plan', 'work', '--base_year', baseyear, '--city', studyarea]"
+      "subprocess.run(args)"
+    )
+  
+    ;read result
+    file-open (word "Output Data/" year "/Acc Calculation/Output/work_first_round/typical_work.csv")
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "ff_id"
+      [
+        let FID1 item 0 data
+        ask turtle FID1 [set acc item 2 data]
+      ]
+    ]
+    file-close
+  ]
+  
+  
+  ;residential facility
+  ask RFs
+  [
+    set available-space capacity - sum [residence-size] of in-link-neighbors
+    ;Calculate the average ResPrice and rent of houses in the surrounding N km (tentatively N is 2)
+    set surrounding-purchase mean [ResPrice] of RFs in-radius neighborhood
+    set surrounding-rent mean [ResRent] of RFs in-radius neighborhood
+    
+    ;update avearge income of purchasers and renters
+    ifelse count in-purchase-neighbors > 0 [set purchaser-income sum [hhd-income] of in-purchase-neighbors / sum [hhd-size] of in-purchase-neighbors] [set purchaser-income 0]
+    ifelse count in-rent-neighbors > 0 [set renter-income sum [hhd-income] of in-rent-neighbors / sum [hhd-size] of in-rent-neighbors][set renter-income 0]
+  ]
+  ask RFs with [purchaser-income = 0][set purchaser-income [purchaser-income] of min-one-of RFs with [purchaser-income != 0] [distance myself]]
+  ask RFs with [renter-income = 0][set renter-income [renter-income] of min-one-of RFs with [renter-income != 0] [distance myself]]
+  
+  ;office facility
+  ask CFFs 
+  [
+    set available-space capacity - sum [office-size] of in-rent-neighbors
+    set agg sum [size-firm] of in-rent-neighbors in-radius neighborhood
+  ]
+  
+  ;commercial facility
+  ask CFBs
+  [
+    set available-space capacity - sum [space] of in-rent-neighbors
+    set agg-shopping sum [space] of businessmen with [rent-neighbor? myself and Category = 1]
+    set agg-leisure sum [space] of businessmen with [rent-neighbor? myself and Category = 2]
+  ]
+  set ave-shopping-flow sum [flow] of businessmen with [Category = 1] / count businessmen with [Category = 1]
+  set ave-leisure-flow sum [flow] of businessmen with [Category = 2] / count businessmen with [Category = 2]
+  
+  ;schools
+  ask schools 
+  [
+    set school-size count in-student-neighbors
+    set spa-sch capacity - school-size
+    set lab-sch-req count in-employee-neighbors
+    set lab-sch count in-employee-neighbors
+  ]
+  
+  ;record current student in each types of schools
+  let max-stype max [stype] of schools
+  set b-stu-cur []
+  let i 0 
+  while [i < max-stype]
+  [
+    set i i + 1
+    set b-stu-cur lput sum [count in-student-neighbors] of schools with [stype = i] b-stu-cur
+  ] 
+  
+  
+  set ave-rf-price mean [resprice] of rfs;Average purchasing price of residential facilities in the current year
+  set ave-rf-price-last mean [resprice] of rfs ;Average purchasing price of residential facilities in the previous year
+  set ave-rf-rent mean [resrent] of rfs;Average rent of residential facilities in the current year
+  set ave-rf-rent-last mean [resrent] of rfs;Average rent of residential facilities in the previous year
+  set ave-cff-rent mean [CFFRent] of CFFs;Average rent of commercial facilities (firm) in the current year
+  set ave-cff-rent-last mean [CFFRent] of CFFs;Average rent of office (firm) facilities in the previous year
+  set ave-cfb-rent mean [Rent-CFB] of CFBs;Average rent of commercial (businessman) facilities in the current year
+  set ave-cfb-rent-last mean [Rent-CFB] of CFBs;Average rent of commercial (businessman) facilities in the previous year
+  
+  
+end
+

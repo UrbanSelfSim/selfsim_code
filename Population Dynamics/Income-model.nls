@@ -1,0 +1,70 @@
+;This sub-model simulates annual salary fluctuations among employed person agents by integrating a normal (Gaussian) distribution of income changes with a probability-based allocation mechanism.
+
+to income-model
+  let income_change item (year - base-year - 1) P-cha-inco
+  let PID_list []
+  let Income_list []
+  
+  ask people with [status = 2] 
+  [
+    if income = 0 [set income 1]
+    set PID_list lput PID PID_list 
+    set Income_list lput Income Income_list
+  ]
+  
+  py:Set "Ave_Inc_Cha" income_change
+  py:Set "PID" PID_list
+  py:Set "Income" Income_list
+  py:Set "min_income" P-min-inco
+  
+  (py:run
+    "N = len(PID)"
+    "updated_incomes = []"
+    "income_changes = np.random.normal(loc=Ave_Inc_Cha, scale=Ave_Inc_Cha / 2, size=N)"
+    "sorted_changes = sorted(income_changes, key=abs, reverse=True)"
+
+    "index_map = {PID[i]: i for i in range(N)}"  
+    "unassigned_pids = PID.copy()"  
+    "for change in sorted_changes:"
+    "    if not unassigned_pids:"  
+    "        break"
+    "    remaining_income = sum(Income[index_map[i]] for i in unassigned_pids)"
+    "    probabilities = [Income[index_map[i]] / remaining_income for i in unassigned_pids]"
+    
+    "    selected_pid = random.choices(unassigned_pids, weights=probabilities, k=1)[0]"
+    "    selected_idx = index_map[selected_pid]"
+
+    "    Income[selected_idx] += change"
+    "    if Income[selected_idx] < min_income:"
+    "        Income[selected_idx] = min_income"
+    "    updated_incomes.append([selected_pid, Income[selected_idx]])"
+    
+    "    unassigned_pids.remove(selected_pid)" 
+  )
+  
+  let updated-income py:runresult "updated_incomes"
+  
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Income "year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Income "year ".csv")
+    file-print "pid, hhd, age, previous_income, new_income"
+  ]
+  
+  foreach updated-income
+  [
+    a ->
+    let P item 0 a
+    let income1 item 1 a
+    ask one-of people with [PID = P]
+    [
+      let previous_income income
+      set income income1
+      if pop-output = 1 [file-print (word pid "," hhd "," age"," previous_income "," income)]
+    ]
+  ]
+  file-close-all
+  print "income model finished"
+end

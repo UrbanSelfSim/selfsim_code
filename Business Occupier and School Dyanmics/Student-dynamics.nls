@@ -1,0 +1,197 @@
+;This file contains three key models for simulating students' school assignment and response to educational dynamics in the SelfSim framework:
+;student-higher-school-choice assigns students to appropriate schools based on their education level and school availability. It ensures spatial proximity is considered and initializes education durations accordingly.
+;student-education-change handles student reallocation when a school is closed, probabilistically selecting new schools of the same type.
+;kindergarten-student generates daily activity plans for students who have just entered kindergarten.
+
+
+to student-higher-school-choice
+  ask people with [status = 5][set color yellow] ;mark these people with yellow
+  ;Assign a school to each student and initialize the education duration
+  ask schools [set spa-sch capacity - count in-student-neighbors]
+  let number2 length P-edu-sch
+  while [number2 > 0]  ;Gradually assign students at each education level to corresponding schools.
+  [
+    set number2 number2 - 1
+    let edu-sch item number2 P-edu-sch
+    let edu item 0 edu-sch
+    let sch item 1 edu-sch
+    let dur item 2 edu-sch
+    
+    if edu != 0
+    [
+      while [count people with [status = 5 and count in-student-neighbors = 0 and education = edu] > 0] ;If there are students in the environment who have not been assigned to a school, execute the following code.
+      [
+        ;If there are schools with available spots, select from those schools. If all schools of that type are full, select from all schools.
+        let candidates nobody
+        ifelse count schools with [stype = sch and spa-sch > 0] > 0 [set candidates schools with [stype = sch and spa-sch > 0]][set candidates schools with [stype = sch]]
+        let target nobody
+        let wei-sch []
+        let IDs []
+        ask one-of people with [status = 5 and count in-student-neighbors = 0 and education = edu]
+        [         
+          ask candidates 
+          [
+            set IDs lput who IDs 
+            let dis-sch distance myself
+            if dis-sch = 0 [set dis-sch 0.1]
+            let wei-sch-i 0
+            ifelse spa-sch > 0 [set wei-sch-i spa-sch / dis-sch / B-coe-dis-sch][set wei-sch-i capacity / dis-sch / B-coe-dis-sch]
+            set wei-sch lput wei-sch-i wei-sch
+          ]
+          py:set "IDs" IDs
+          py:set "wei_sch" wei-sch
+          (py:run "result = random.choices (IDs, wei_sch)")
+          set target turtle item 0 (py:runresult "result")
+          set status 1
+          set edu-year-required dur set edu-year 1
+          create-student-with target
+          set welong [long] of target
+          set welat [lat] of target
+          set dis-cur distance target
+          ask target [set spa-sch spa-sch - 1]
+        ]
+      ]
+    ]
+  ]
+  
+  ;update daily plan 
+  
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Education")
+    let filename (word "Kindergarten " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Education/Kindergarten " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"][file-print "PID,Weekday,Weekend"]
+  ]
+  
+  ;entering kindergarten
+  ask people with [color = yellow and education = 1 ]
+  [
+    set color white
+    if dailyplan != "Simple"
+    [
+      ;;Generate a daily plan for students starting kindergarten
+      let target one-of people with [status = 1 and length plan-weekday != 0]        
+      ifelse dailyplan = "Typical"
+      [
+        set chain-weekday [chain-weekday] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        generate-typical-new-plan dur-weekday
+        if dai-output = "Always" [file-print (word PID "," plan-weekday)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+      [
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        let dur-weekend extract-duration [plan-weekend] of target
+        generate-full-new-plans dur-weekday dur-weekend
+        if dai-output = "Always" [file-print (word PID "," plan-weekday "," plan-weekend)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+    ]
+  ]
+  file-close
+  
+  ;update xml
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Education/Kindergarten " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Education/DailyPlan_Kindergarten.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+  
+  ;other case
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Education")
+    let filename (word "Higher education " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Education/Higher education " year ".csv")
+    file-print "PID,Weekday"
+  ]
+  
+  ask people with [color = yellow]
+  [
+    let new-loc one-of schools with [student-neighbor? myself]
+    education-change new-loc
+    if dai-output = "Always" [file-print (word PID "," plan-weekday)]
+    if dai-output = "Year-End" [set plan-changed 1]
+    set color white
+  ]
+  file-close
+    
+  ;update daily plan
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Education/Higher education " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Education/DailyPlan_HigherEdu.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_weekday_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_weekday_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+end
+
+;Find a new school of the same type for students after a school closure.
+to-report student-education-change [school-type]
+  ifelse count schools with [stype = school-type and spa-sch > 0 and color = white] > 0
+  [
+    let wei-sch []
+    let IDs []
+    ask schools with [stype = school-type and spa-sch > 0 and color = white]
+    [
+      set IDs lput who IDs
+      set dis-can distance myself
+      if dis-can = 0 [set dis-can 0.1]
+      set wei-sch lput (spa-sch / dis-can / B-coe-dis-sch) wei-sch
+    ]
+    py:set "IDs" IDs
+    py:set "wei_sch" wei-sch
+    (py:run
+      "result = random.choices (IDs, wei_sch)"
+    )
+    report school item 0 (py:runresult "result")
+  ]
+  [
+    let wei-sch []
+    let IDs []
+    ask schools with [stype = school-type and color = white]
+    [
+      set IDs lput who IDs
+      set dis-can distance myself
+      if dis-can = 0 [set dis-can 0.1]
+      set wei-sch lput (capacity / dis-can / B-coe-dis-sch) wei-sch
+    ]
+    py:set "IDs" IDs
+    py:set "wei_sch" wei-sch
+    (py:run
+      "result = random.choices (IDs, wei_sch)"
+    )
+    report school item 0 (py:runresult "result")
+  ]
+end

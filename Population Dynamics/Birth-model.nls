@@ -1,0 +1,73 @@
+;Birth model simulates the introduction of new person agents into the population by modelling births among fertile women. 
+;It uses a fertility function influenced by demographic factors of existing agents. 
+;The birth process defines the probability and conditions for adding new agents, initializing each newborn with specific demographic and socioeconomic attributes and updating relationships and household sizes.
+
+to birth-model
+  ;
+  let num-births item (year - base-year - 1) P-bir
+  
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Birth " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Birth " year ".csv")
+    file-print "pid, hhd, father_pid, mother_pid"
+  ]
+  
+  let i 1
+  while [i <= num-births and count people with [gender = 0 and count in-Spouse-neighbors = 1 and age <= P-age-bir and count in-parent-neighbors with [age < [age] of myself] < P-max-bir] > 0]
+  [
+    print (word "Num-births: " num-births " i: " i)
+    ask one-of people with [gender = 0 and count in-Spouse-neighbors = 1 and age <= P-age-bir and count in-parent-neighbors with [age < [age] of myself] < P-max-bir]
+    [
+      let husband one-of people with [Spouse-neighbor? myself]
+      let P-num-child count people with [age < [age] of myself and parent-neighbor? myself and parent-neighbor? husband]
+      let children-po P-max-bir - P-num-child
+      if children-po > 0
+      [
+        let my-prob P-coe-bir * (children-po / P-max-bir * exp ((- P-decay-bir) * P-num-child))
+        if random-float 1 < my-prob
+        [
+          ;output information
+          let pid1 max [pid] of people + 1
+          let hhd1 hhd
+          let father-id [pid] of husband
+          let mother-id pid
+          if pop-output = 1 [file-print (word pid1 "," hhd1 "," father-id "," mother-id)]
+          set i i + 1
+          hatch 1
+          [
+            set pid pid1
+            set age 0
+            set income 0
+            set gender random 2
+            set status 1
+            set education 0 
+            set edu-year 1
+            set edu-year-required (item 2 (item 0 p-edu-sch)) 
+            set welong 0
+            set welat 0
+            set chain-weekday []
+            set chain-weekend []
+            set plan-weekday []
+            set plan-weekend []
+            set max-friend 0
+            set min-friend 0
+            set P-scr-net 0
+            set relationship 0
+            create-parent-with myself
+            create-parent-with husband
+            if ([relationship] of myself <= 2) [set relationship 3]
+            if ([relationship] of myself = 4) [set relationship 11]
+            if ([relationship] of myself = 3 or [relationship] of myself = 13)[set relationship 6]
+            if (relationship = 0) [set relationship 12]
+          ]
+          ask one-of households with [hhd = [hhd] of myself][set hhd-size hhd-size + 1 set flexible flexible + 1]
+        ]
+      ]
+    ]
+  ]
+  file-close-all
+  print "birth model finished"
+end

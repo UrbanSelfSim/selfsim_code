@@ -1,0 +1,323 @@
+to Load-agent
+  Load-map
+  Load-RFs
+  Load-CFFs
+  Load-CFBs
+  Load-schools
+  Load-businessmen
+  Load-firms
+  Load-households
+  Load-people
+  Load-road
+end
+
+to Load-households
+  set-default-shape households "circle"
+  let people-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/Households.shp")
+  foreach gis:feature-list-of people-dataset
+  [
+    vector-feature ->
+    create-households 1 
+    [
+      ; Assign attributes to people based on the dataset
+      set hhd gis:property-value vector-feature "hhd"
+      set hhd-size gis:property-value vector-feature "Hhd_size"
+      set hhd-income gis:property-value vector-feature "Hhd_income"
+      set residence-size hhd-size
+      set res gis:property-value vector-feature "Residence"
+      let property gis:property-value vector-feature "property"
+      let my-residence one-of RFs with [RID = [Res] of myself]
+      ifelse property = 1 [create-purchase-with my-residence] [create-rent-with my-residence]
+      set long [long] of my-residence
+      set lat [lat] of my-residence
+      move-to my-residence
+    ]
+  ]
+  ask households [set color white]
+end
+
+to Load-people
+  ;Set the default shape for people
+  set-default-shape people "circle"
+  
+  ; Load the dataset containing population information
+  let people-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/People.shp")
+  
+  ; Create agents for each person in the dataset
+  foreach gis:feature-list-of people-dataset
+  [
+    vector-feature ->
+    create-people 1 
+    [
+      ; Assign attributes to people based on the dataset
+      set pid gis:property-value vector-feature "pid"
+      set hhd gis:property-value vector-feature "hhd"
+      set age gis:property-value vector-feature "Age"
+      set Gender gis:property-value vector-feature "Gender"
+      set Income gis:property-value vector-feature "Income"
+      set education gis:property-value vector-feature "Education"
+      set edu-year gis:property-value vector-feature "Edu_year"
+      set edu-year-required gis:property-value vector-feature "Edu_durati"
+      set status gis:property-value vector-feature "status"
+      set relationship gis:property-value vector-feature "Rela"
+      if social-network = 1 [set max-friend gis:property-value vector-feature "Max_Fri" set min-friend gis:property-value vector-feature "Min_Fri"]
+      
+      set plan-weekday []
+      set plan-weekend []
+      set chain-weekday []
+      set chain-weekend []
+      let wsplace gis:property-value vector-feature "WS"
+      let WEID gis:property-value vector-feature "ID"
+      
+  
+      ; If the person is a student (status = 1) and has a school assignment
+      if status = 1 and wsplace != "0" 
+      [
+        create-student-with one-of schools with [SchID = WEID] 
+        set welong [long] of one-of schools with [SchID = WEID]
+        set welat [lat] of one-of schools with [SchID = WEID]
+      ]
+  
+      ; If the person is employed (status = 2)
+      if status = 2
+      [
+        ; Determine the workplace type and assign accordingly
+        (ifelse
+          wsplace = "Schools" 
+          [
+            create-employee-with one-of schools with [SchID = WEID]
+            set welong [long] of one-of schools with [SchID = WEID]
+            set welat [lat] of one-of schools with [SchID = WEID]
+          ]
+          wsplace = "Businessmen" 
+          [
+            create-employee-with one-of Businessmen with [BID = WEID]
+            set welong [long] of one-of Businessmen with [BID = WEID]
+            set welat [lat] of one-of Businessmen with [BID = WEID]
+          ]
+          wsplace = "Firms" 
+          [
+            create-employee-with one-of firms with [FID = WEID]
+            set welong [long] of one-of firms with [FID = WEID]
+            set welat [lat] of one-of firms with [FID = WEID]
+          ]
+        )
+      ]
+      
+      ;move to the residence
+      let my-hhd one-of households with [hhd = [hhd] of myself]
+      set livelong [long] of my-hhd
+      set livelat [lat] of my-hhd
+      move-to my-hhd
+      if status = 1 and education != 0 [set dis-cur distance one-of student-neighbors]
+      if status = 2 [set dis-cur distance one-of employee-neighbors]
+    ]
+  ]
+
+  ; Set properties for all people (e.g., district, size, color)
+  ask people
+  [
+    set size 0.5
+    set color white
+  ]
+end
+
+to Load-map
+  let map-dataset gis:load-dataset (word "Scenarios/" Study-Area "/Agents/Map.shp")
+  gis:load-coordinate-system (word "Scenarios/" Study-Area "/Agents/Map.prj")
+  let envelope gis:envelope-of map-dataset
+  gis:set-world-envelope envelope
+  gis:set-drawing-color white
+  gis:draw map-dataset 0.5
+  gis:apply-coverage map-dataset "ADMIN" admin
+  gis:apply-coverage map-dataset "DISTRICT" pdistrict
+  ask patches with [admin != 1][set admin 0 set pdistrict 0]
+end
+
+to Load-RFs
+  let residence-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/RFs.shp")
+  foreach gis:feature-list-of residence-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let rid1 gis:property-value vector-feature "RID"
+    let ResPrice1 gis:property-value vector-feature "ResPrice"
+    let Resrent1 gis:property-value vector-feature "ResRent"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "lat"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape RFs "house"
+    
+    create-RFs 1
+    [
+      set rid rid1
+      set capacity capacity1
+      setxy long-coord lat-coord
+      set long long1
+      set lat lat1
+      set ResPrice ResPrice1
+      set ResRent Resrent1
+      set available-space capacity
+    ]
+  ]
+  
+  ask RFs [set size 0.5 set color white]
+end
+
+to Load-CFFs
+  let CFF-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/CFFs.shp")
+  foreach gis:feature-list-of CFF-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let rent1 gis:property-value vector-feature "CFFRent"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "Lat"
+    let CFFID1 gis:property-value vector-feature "CFFID"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape CFFs "house"
+    create-CFFs 1
+    [
+      set CFFRent rent1
+      set capacity capacity1
+      set long long1
+      set lat lat1
+      set CFFID CFFID1
+      set available-space capacity
+      setxy long-coord lat-coord
+    ]
+  ]
+  ask CFFs [set size 0.5 set color white]
+end
+
+to Load-CFBs
+  let CFB-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/CFBs.shp")
+  foreach gis:feature-list-of CFB-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let Rent-CFB1 gis:property-value vector-feature "Rent_CFB"
+    let capacity1 gis:property-value vector-feature "capacity"
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "lat"
+    let CFBID1 gis:property-value vector-feature "CFBID"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    set-default-shape CFFs "house"
+    create-CFBs 1
+    [
+      set Rent-CFB Rent-CFB1
+      set capacity capacity1
+      set long long1
+      set lat lat1
+      set CFBID CFBID1
+      setxy long-coord lat-coord
+      set available-space capacity
+    ]
+  ]
+  ask CFBs [set size 0.5 set color white]
+end
+
+to Load-firms
+  set-default-shape firms "triangle"
+  let firm-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/firms.shp")
+  foreach gis:feature-list-of firm-dataset
+  [
+    vector-feature ->
+    let FID1 gis:property-value vector-feature "FID_"
+    let emp1 gis:property-value vector-feature "employee"
+    let age1 gis:property-value vector-feature "age"
+    let location1 gis:property-value vector-feature "location"
+    create-firms 1
+    [
+      set FID FID1
+      set size-firm emp1
+      set emp-req size-firm
+      set age age1
+      let target one-of CFFs with [CFFID = location1]
+      move-to target
+      set long [long] of target
+      set lat [lat] of target
+      set office-size size-firm
+      set office-cost office-size * [CFFRent] of target
+      set office-cost-next office-cost
+      create-rent-with target
+    ]
+  ]
+  ask firms [set size 0.5 set color white]
+  ask CFFs [set available-space capacity - sum [office-size] of in-rent-neighbors]
+end
+
+to Load-Businessmen
+  set-default-shape businessmen "triangle"
+  let shop-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/Businessmen.shp")
+  foreach gis:feature-list-of shop-dataset
+  [
+    vector-feature ->
+    let BID1 gis:property-value vector-feature "BID"
+    let location1 gis:property-value vector-feature "location"
+    let busi-size1 gis:property-value vector-feature "Busi_size"
+    let Category1 gis:property-value vector-feature "Category"
+    let age1 gis:property-value vector-feature "Age"
+    
+    create-Businessmen 1
+    [
+      set BID BID1
+      set Category Category1
+      let target one-of CFBs with [CFBID = location1]
+      set busi-size busi-size1
+      set emp-req busi-size
+      set space busi-size
+      move-to target
+      set long [long] of target
+      set lat [lat] of target
+      set age age1
+      create-rent-with target
+    ]
+  ]
+  ask Businessmen [set size 0.5 set color white]
+  ask CFBs [set available-space capacity - sum [space] of in-rent-neighbors]
+end
+
+to Load-schools
+  set-default-shape schools "triangle"
+  let school-dataset gis:Load-dataset (word "Scenarios/" Study-Area "/Agents/schools.shp")
+  foreach gis:feature-list-of school-dataset
+  [
+    vector-feature ->
+    let coord-tuple gis:location-of (first (first (gis:vertex-lists-of vector-feature)))
+    let long1 gis:property-value vector-feature "long"
+    let lat1 gis:property-value vector-feature "Lat"
+    let SchID1 gis:property-value vector-feature "ScID"
+    let stype1 gis:property-value vector-feature "SType"
+    let capacity1 gis:property-value vector-feature "Capacity"
+    let long-coord item 0 coord-tuple
+    let lat-coord item 1 coord-tuple
+    
+    create-schools 1
+    [
+      set SchID SchID1
+      setxy long-coord lat-coord
+      set long long1
+      set lat lat1
+      set stype stype1
+      set capacity capacity1
+    ]
+  ]
+  ask schools [set size 0.5 set color white]
+end
+
+to Load-road
+  if (dai-output = "Always" or dai-output = "Year-End" or complex-acc = 1) and route = 1
+  [
+    let road (word "Scenarios/" Study-Area "/Road")
+    let params (list (list "route_folder" road))
+    let request web:make-request "http://127.0.0.1:5000/load_network_data" "POST" params []
+    print request
+    ;ifelse request = "success" [print "Road data has been successfully loaded."] [print "AN ERROR OCCURRED during data loading" stop]
+  ]
+end

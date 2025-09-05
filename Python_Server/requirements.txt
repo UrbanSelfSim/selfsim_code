@@ -1,0 +1,6 @@
+flask
+networkx
+numpy
+osmnx
+scipy
+tqdm

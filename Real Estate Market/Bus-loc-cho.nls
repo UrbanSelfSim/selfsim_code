@@ -1,0 +1,180 @@
+;commercial facility for businessman
+CFBs-own
+[
+  CFBID ;ID
+  Long
+  Lat
+  Capacity
+  Available-space
+  Rent-CFB ;rent
+  Max-rent-CFB ;The maximum rent of the CFB can rise to in this simulation year
+  Min-rent-CFB ;The minimum rent of the CFB can decrease to in this simulation year
+  Previous-rent-CFB
+  flow ;The customer flow
+  Agg-shopping ;agglomeration of the businessmen for shopping, which is the sum of capacity of surrouding businessmen for shopping
+  Agg-leisure ;agglomeration of the businessmen for leisuring, which is the sum of capacity of surrouding businessmen for leisuring
+  attractiveness ;attractiveness
+  my-distance ;used to record information of daily plan updating
+  
+]
+
+;In the Businessman Location Choice & Commercial Facility (for Businessmen) Price Model simulates the decision-making process businessman agents use to select the locations of commercial facilities - shops & leisure and illustrates how commercial facilities - firms fluctuate during this selection process. 
+;Specifically, Businessman agent is a collective term used to describe both shop and leisure service agents. 
+;Accordingly, there are two kinds of commercial facilities for them, namely, commercial facilities for shops and commercial facilities for the leisure, respectively.
+
+CBrents-own
+[
+  R-rent-CFB
+  R-agg-CFB
+  R-flow-CFB
+  R-scr-CFB
+]
+
+;simulate new Businessmen' location choice 
+to bus-loc-cho
+  set cfb-rent-transaction 0
+  ask CFBs 
+  [
+    set Max-rent-CFB Min-rent-CFB * R-max-rent-CFB 
+    set Min-rent-CFB Min-rent-CFB * R-min-rent-CFB
+    set Previous-rent-CFB Min-rent-CFB
+    
+    set agg-shopping sum [space] of in-rent-neighbors with [Category = 1]
+    set agg-leisure sum [space] of in-rent-neighbors with [Category = 2]
+  ]
+  
+  ask Businessmen with [location-choice = 1]
+  [
+    ask up-to-n-of R-can-cfb CFBs with [available-space >= [busi-size] of myself]
+    [
+      let renter myself
+      create-CBrent-with renter
+      ask one-of my-CBrents with [other-end = renter]
+      [
+        ;record utility of cost
+        set R-rent-CFB ([Min-rent-CFB] of myself / mean [Min-rent-CFB] of CFBs) - 1
+        ;record utility of agglomeration
+        ifelse [Category] of renter = 1 [set R-agg-CFB [agg-shopping] of myself / mean [agg-shopping] of CFBs - 1] [set R-agg-CFB [agg-leisure] of myself / mean [agg-leisure] of CFBs - 1]
+        ;record utility of traffic
+        set R-flow-CFB [flow] of myself / mean [flow] of CFBs - 1
+        
+        ;calculate total utility
+        set R-scr-CFB R-wgt-rent-CFB  * R-rent-CFB + R-wgt-agg-CFB  * R-agg-CFB + R-wgt-flow-CFB  * R-flow-CFB
+      ]
+    ]
+  ]
+  
+  let increment R-neg-rent-cfb + 1
+  set ave-cfb-rent sum [Rent-CFB * capacity] of CFBs / sum [capacity] of CFBs
+  let i 1
+  while [i <= R-neg-num-cfb and increment > R-neg-rent-cfb] ;5 times R-neg-num-cf
+  [
+    if rea-output = 1
+    [
+      let filefolder (word "Output Data/" year "/Real Estate")
+      let filename (word year " CFB attractiveness of purchasing " i ".csv")
+      clear-file filefolder filename
+      file-open (word "Output Data/" year "/Real Estate/" year " CFB attractiveness of purchasing " i ".csv")
+      file-print "CFBID,Attractiveness"
+    ]
+    ;calculate attractiveness of commercial buildings, and update their rent according to their attractiveness
+    ask CFBs [set attractiveness 0]
+    ask CFBs with [available-space > 0]
+    [
+      set attractiveness sum [R-scr-CFB] of my-CBrents / available-space
+      if rea-output = 1
+      [
+        file-print (word CFBID","attractiveness)
+      ]
+      
+      (ifelse 
+        attractiveness > R-inc-CFB ;attractiveness is above 'T-CB-increase', CB will increase its rent
+        [
+          set Min-rent-CFB Min-rent-CFB + R-pro-inc-CFB * (attractiveness - R-inc-CFB) * Min-rent-CFB
+          if Min-rent-CFB > Max-rent-CFB [set Rent-CFB Max-rent-CFB]
+          
+          ;update its utility, because of rent change
+          ask my-CBrents [set R-rent-CFB [Rent-CFB] of myself / mean [Rent-CFB] of CFBs - 1 set R-scr-CFB R-wgt-rent-CFB  * R-rent-CFB + R-wgt-agg-CFB  * R-agg-CFB + R-wgt-flow-CFB  * R-flow-CFB]
+        ]
+        attractiveness < R-dec-CFB
+        [
+          set Rent-CFB Rent-CFB + R-pro-dec-CFB * (attractiveness - R-dec-CFB) * Rent-CFB
+          if Rent-CFB < Min-rent-CFB [set Rent-CFB Min-rent-CFB]
+          
+          ;update its utility, because of rent change
+          ask my-CBrents [set R-rent-CFB [Rent-CFB] of myself / mean [Rent-CFB] of CFBs - 1 set R-scr-CFB R-wgt-rent-CFB  * R-rent-CFB + R-wgt-agg-CFB  * R-agg-CFB + R-wgt-flow-CFB  * R-flow-CFB]
+        ]
+        [set Rent-CFB Rent-CFB * 1]
+      )
+    ]
+    file-close
+    set ave-cfb-rent-last ave-cfb-rent
+    set ave-cfb-rent sum [Rent-CFB * capacity] of CFBs / sum [capacity] of CFBs
+    set increment abs (ave-cfb-rent - ave-cfb-rent-last) / ave-cfb-rent-last
+    set i i + 1
+  ]
+  
+  ask CBrents with [R-scr-CFB < R-exp-busi][die]
+  
+  
+  ;output information on house moving businessmen
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Moving businessmen " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real estate/Moving businessmen " year ".csv")
+    file-print "BID, CFBID"
+  ]
+  ;simulate Businessmen rent office buildings after 5 times of R-neg-num-cf
+  while [count Businessmen with [location-choice = 1 and count in-CBrent-neighbors > 0] > 0]
+  [
+    ask max-one-of Businessmen with [location-choice = 1 and count in-CBrent-neighbors > 0][space]
+    [
+      set cfb-rent-transaction cfb-rent-transaction + 1
+      set location-choice 0
+      let target-link max-one-of my-CBrents [R-scr-CFB] ;select one-of office building with the highest utility, and record it as target
+      let target [other-end] of target-link
+      ask my-CBrents [die]
+      create-rent-with target
+      set long [long] of target
+      set lat [lat] of target
+      set space busi-size
+      ask target 
+      [
+        set available-space available-space - [space] of myself
+        ask my-CBrents [if [space] of other-end > [available-space] of myself [die]]
+      ]
+      if rea-output = 1 [file-print (Word BID "," (word "CFB " [CFBID] of target))]
+    ]
+  ]
+  
+  ;If no suitable building is found in above renting behviors, Businessmen with will rent the building with the lowest rent on the market.
+  ask Businessmen with [location-choice = 1]
+  [
+    set cfb-rent-transaction cfb-rent-transaction + 1
+    let target min-one-of CFBs with [available-space >= [busi-size] of myself][Rent-CFB]
+    set location-choice 0
+    create-rent-with target
+    set long [long] of target
+    set lat [lat] of target
+    set space busi-size
+    ask one-of CFBs with [rent-neighbor? myself] [set available-space available-space - [space] of myself]
+    if rea-output = 1 [file-print (Word BID "," (word "CFB " [CFBID] of target))]
+  ]
+  file-close
+  
+  ;output information
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Commercial facility (for businessman) " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real estate/Commercial facility (for businessman) " year ".csv")
+    file-print "CFBID,  previous_rent, new_rent, rent_change,long,lat"
+    ask CFBs [file-print (word CFBID "," Previous-rent-CFB "," Rent-CFB "," (Rent-CFB - Previous-rent-CFB)","long "," lat)]
+  ]
+  file-close-all
+  
+  print "Businessman location choice and commercial facility price model finished"
+end

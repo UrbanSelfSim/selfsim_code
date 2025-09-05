@@ -1,0 +1,55 @@
+;Emigration model simulates the dynamics of emigration, reflecting the changes in population due to families leaving the area.
+
+to Emigration-Model
+  let num-emi item (year - base-year - 1) P-emi ; Calculate the number of emigrants for the current year (based on the base year)
+  
+  let emi-list []
+  
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Emigration " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Emigration " year ".csv")
+    file-print "hhd, district, hhd_income, hhd_size"
+  ]
+  
+  
+  
+  while [num-emi > 0]
+  [
+    ask households [set district [pdistrict] of patch-here]
+    let candidate one-of households ;randomly select one household
+    set num-emi num-emi - [hhd-size] of candidate
+    if pop-output = 1 [file-print (word [hhd] of candidate "," [district] of candidate "," [hhd-income] of candidate "," [hhd-size] of candidate)]
+    ask people with [hhd = [hhd] of candidate] [set emi-list lput PID emi-list die]
+    ask candidate [die]
+  ]
+  
+  file-close-all
+  
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Emigration")
+    let filename (word "Emigration list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Emigration/Emigration list " year ".csv")
+    file-print "PID"
+    
+    
+    let i (length emi-list - 1)
+    while [i >= 0] [file-print item i emi-list set i i - 1]
+    file-close    
+    
+    let updated_csv (word "Output Data/" year "/Human mobility/Emigration/Emigration list " year ".csv")
+    let main_output_path "Output Data/DailyPlan.xml"
+    let second_output_path (word "Output Data/" year "/Human mobility/Emigration/DailyPlan-emigration " year ".xml")
+    
+    let params (list (list "updated_csv" (word updated_csv)) (list "main_output_path" (word main_output_path)) (list "second_output_path" (word second_output_path)))
+    
+    let request web:make-request "http://127.0.0.1:5000/delete_plans" "POST" params []
+  ]
+  
+  print "Emigration model finished"
+end
+

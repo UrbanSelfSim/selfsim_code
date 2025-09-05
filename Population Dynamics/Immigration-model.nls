@@ -1,0 +1,68 @@
+;Immigration model simulates the dynamics of immigration, reflecting the changes in population due to families moving into the area. 
+;Historical migration data is used to determine immigration rates, which can be predicted, for example, using statistical or machine learning models trained on past immigration trends. 
+;The model simulates the integration of new families by assigning them schools or jobs while ensuring consistency in household structures and social networks.
+
+to immigration-model
+  let num-imm item (year - base-year - 1) P-imm
+  
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Immigration " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Immigration " year ".csv")
+    file-print "hhd, hhd_size"
+  ]
+  
+  ask households [set hhd-size count people with [hhd = [hhd] of myself]]
+  
+  while [num-imm > 0]
+  [
+    let candidate one-of households ;Randomly select a family, and the attributes of the newly moved-in family will be consistent with those of that family.
+    let new-hhdid max [hhd] of households + 1 ;generate a household id
+    ask candidate 
+    [
+      hatch 1 
+      [
+        set hhd new-hhdid 
+        set res 0;residence ID
+        set flexible 0;number of accumulated flexible triggers
+        set mandatory 1;mandatory trigger 0- have no mandatory trigger; 1- have mandatory trigger
+        set acc-current 0; accessibility of current residence
+      ]
+      if pop-output = 1 [file-print (Word new-hhdid "," hhd-size)]
+    ]
+    ask people with [hhd = [hhd] of candidate]
+    [
+      hatch 1 
+      [
+        set pid max [pid] of people + 1
+        set hhd new-hhdid
+        set livelong 0
+        set livelat 0
+        set color black
+        if status = 1 and education > 0
+        [
+          let school-type item 1 (item education P-edu-sch)
+          let target student-education-change school-type
+          create-student-with target
+          set welong [long] of target
+          set welat [lat] of target
+        ]
+        if status = 2 
+        [
+          set status 3 set income 0 set welong 0 set welat 0
+        ]
+        set chain-weekday []
+        set chain-weekend []
+        set plan-weekday []
+        set plan-weekend []
+      ]
+    ]
+    ask one-of people with [hhd = new-hhdid and relationship = 1][update-relationship new-hhdid self]
+    set num-imm num-imm - [hhd-size] of candidate  ;This round of migration is complete. Subtract the number of people migrated in this round from the target number of migrants
+  ]
+  file-close-all
+  print "Immigration model finished"
+end
+

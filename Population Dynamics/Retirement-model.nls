@@ -1,0 +1,116 @@
+;Retirement model simulates the retirement process within the population by identifying individuals who reach the designated retirement age and transitioning them from active employment to retirement status.
+to retirement-model
+  let retirement-list []
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Retirement " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Retirement " year ".csv")
+    file-print "pid, age, previous_income, new_income, hhd"
+  ]
+  
+  ask people with [gender = 0 and age >= P-age-ret-fem]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      let previous_income income
+      set income income * P-inco-ret
+      set welong 0
+      set welat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      set color yellow ;mark by yellow
+      if pop-output = 1 [file-print (word pid "," age "," previous_income "," income "," hhd)]
+      set retirement-list lput PID retirement-list
+    ]
+  ]
+  
+  ask people with [gender = 1 and age >= P-age-ret-male]
+  [
+    if status = 3 or status = 2
+    [
+      set status 4
+      let previous_income income
+      set income income * P-inco-ret
+      set welong 0
+      set welat 0
+      ask one-of households with [hhd = [hhd] of myself] [set flexible flexible + 1]
+      ask my-employees [die]
+      set color yellow
+      if pop-output = 1 [file-print (word pid "," age "," previous_income "," income "," hhd)]
+      set retirement-list lput PID retirement-list
+    ]
+  ]
+  
+  ask people with [color = yellow]
+  [
+    (ifelse 
+      dailyplan = "Typical"
+      [
+        let target one-of people with [color = white and status = 4 and (length chain-weekday != 0 or length chain-weekend != 0)]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        generate-typical-new-plan  dur-weekday
+      ]
+      dailyplan = "Full"
+      [
+        let target one-of people with [color = white and status = 4 and (length chain-weekday != 0 or length chain-weekend != 0)]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        let dur-weekend extract-duration [plan-weekend] of target
+        generate-full-new-plans dur-weekday dur-weekend
+      ]
+      []
+    )
+    set color white
+  ]
+  file-close
+  
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Retirement")
+    let filename (word "Retirement list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Retirement/Retirement list " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"] [file-print "PID,Weekday,Weekend"]
+    
+    let i (length retirement-list - 1)
+    while [i >= 0] 
+    [
+      let target one-of people with [pid = item i retirement-list]
+      ask target [ifelse dailyplan = "Typical" [file-print (word PID "," plan-weekday)] [file-print (word PID "," plan-weekday "," plan-weekend)]]
+      set i i - 1
+    ]
+    file-close
+    
+    set i (length retirement-list - 1)
+    while [i >= 0] 
+    [
+      let target one-of people with [pid = item i retirement-list]
+      ask target [set plan-changed 1]
+      set i i - 1
+    ]
+    
+    ;update daily plan
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Retirement/Retirement list " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Retirement/DailyPlan_Retirement.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+end

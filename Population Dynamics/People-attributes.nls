@@ -1,0 +1,72 @@
+households-own
+[
+  hhd
+  hhd-size
+  hhd-income
+  res ;residence ID
+  flexible ;number of accumulated flexible triggers
+  mandatory ;mandatory trigger 0- have no mandatory trigger; 1- have mandatory trigger
+  residence-size ;current residence size
+  move ;determine whether move house this year
+  acc-current
+  acc-candidate
+  Long
+  Lat
+  district
+]
+
+
+people-own
+[
+  pid ;person ID
+  hhd ;household ID
+  relationship ;1 housholder 2 spouse of householder 3 son/daughter of householder 4 parents of householder 5 parents of spouse 6 Grandchildren of householder 7 grandparents of housholder 8 maternal grandparents of householder 9 spouse's grandparents 10 maternal grandparents of spouse 11 siblings of householder 12 other 13Daughter-in-law Son-in-law
+  age ;The specific age starting from 0.
+  age-group ;The grouping rules are specified in the configuration file.
+  gender ;0-female; 1-male
+  income ; The specific income starting from 0.
+  income-group ;The grouping rules are specified in the configuration file.
+
+  ;education related attributes
+  education ;The specific education, start from 0 (preschool)
+  education-group ;The grouping rules are specified in the configuration file.
+  edu-year ;Years of study at the current school
+  edu-year-required ;The duration of study required for each level of education.
+
+  status ;1-students or preschoolers 2-employees 3-unemployees 4-retirees
+
+  ;social network attributes
+  max-friend ;The maximum number of friends the person can have.
+  min-friend ;The minimum number of friends one must have.
+  P-scr-net ; It is used to store the degree of similarity between one person agent and another person agent.
+
+
+  ;residence/work and study/shopping/leisure attributes
+  district ;district
+  livelong ;longitude of residential location
+  livelat  ;latitude of residentia
+  welong  ;longitude of work or education place
+  welat ;latitude of work or education place
+
+
+  ;Accessibility
+  Acc-current
+  Acc-candidate
+
+  ;Human mobility
+  chain-weekday ;It is used to store the activity chain of this person agent on a typical weekday, with the data format as follows: ["home" "work" "leisure" "home"]
+  chain-weekend;It is used to store the activity chain of this person agent on a typical weekend, with the data format as follows: ["home" "leisur" "home"]
+
+  plan-weekday ;It is used to store the complete daily plan of this person agent on a typical weekday,  with the data format as follows:[["home" "residence 1" 140.36 36.97 6000 "bus"] [] [] []]   [activity type | facility id | long | lat | duration | transporation mode to next location]
+  plan-weekend ;It is used to store the complete daily plan of this person agent on a typical weekend, with the data format as follows:
+  vir-plan-weekday ; It is used to generate a virtual daily plan that used to calculate accessibility of residential facility candidates
+  vir-plan-weekend
+  
+  plan-changed ;It is used to record whether the person's daily plan was changed during the simulation year
+
+  ;commuting distance
+  dis-cur
+  dis-can
+
+  vehicle-owner
+]

@@ -1,0 +1,124 @@
+to combine-attribute
+  let num-age-group length P-gro-age
+  while [num-age-group > 0]
+  [
+    let age-group1 item (num-age-group - 1) P-gro-age
+    let age-lower item 0 age-group1
+    let age-upper item 1 age-group1
+    ask people with [age >= age-lower and age <= age-upper][set age-group num-age-group]
+    set num-age-group num-age-group - 1
+  ]
+  
+  let num-income-group length P-gro-inco
+  while [num-income-group > 0]
+  [
+    let income-group1 item (num-income-group - 1) P-gro-inco
+    let income-lower item 0 income-group1
+    let income-upper item 1 income-group1
+    ask people with [income >= income-lower and income <= income-upper][set income-group num-income-group]
+    set num-income-group num-income-group - 1
+  ]
+  
+  let num-edu-group length P-gro-edu
+  while [num-edu-group > 0]
+  [
+    let edu-group1 item (num-edu-group - 1) P-gro-edu
+    let edu-lower item 0 edu-group1
+    let edu-upper item 1 edu-group1
+    ask people with [education >= edu-lower and education <= edu-upper][set education-group num-edu-group]
+    set num-edu-group num-edu-group - 1
+  ]
+end
+
+to generate-network
+  combine-attribute
+  while [count people with [count in-friend-neighbors < min-friend] > 0] ;if there are people whose number of friends is below to its minimum number of friends, they will seek for new friends
+  [
+    ask people with [count in-friend-neighbors < min-friend]
+    [
+      let age-group1 age-group
+      let gender1 gender
+      let income-group1 income-group
+      let education-group1 education-group
+      let candidate-friends up-to-n-of 10 people with [count in-friend-neighbors < max-friend and hhd != [hhd] of myself]
+      ask candidate-friends 
+      [
+        set P-scr-net P-wgt-age * abs (age-group - age-group1) / length P-gro-age + P-wgt-gen * abs (gender - gender1) / 2 + P-wgt-inco * abs (income-group1 - income-group) / length P-gro-inco + P-wgt-edu * abs (education-group - education-group1) / length P-gro-edu
+      ]
+      let P-scr-net-max min-one-of candidate-friends with [P-scr-net <= P-min-net][P-scr-net]
+      if P-scr-net-max != nobody [create-friend-with min-one-of candidate-friends [P-scr-net]]
+    ]
+  ]
+  ask links [set color white hide-link]
+end
+
+to update-friend
+  ;Simulate ending friendship
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Social network ending " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Social network ending " year ".csv")
+    file-print "pid1, pid2, P-scr-net"
+  ]
+  
+  ask people
+  [
+    let age-group1 age-group
+    let gender1 gender
+    let income-group1 income-group
+    let education-group1 education-group
+    ask in-friend-neighbors 
+    [
+      let friend1 myself
+      set P-scr-net P-wgt-age * abs (age-group - age-group1) / length P-gro-age + P-wgt-gen * abs (gender - gender1) / 2 + P-wgt-inco * abs (income-group1 - income-group) / length P-gro-inco + P-wgt-edu * abs (education-group - education-group1) / length P-gro-edu
+      if P-scr-net >= P-min-net [ask my-friends with [other-end = friend1] [die]]
+      if pop-output = 1
+      [
+        file-print (word [pid] of self "," [pid] of friend1 "," P-scr-net)
+      ]
+    ]
+  ]
+  file-close-all
+  
+  ;Generate social network for people who have just turned 18 years old
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Social network forming " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Social network forming " year ".csv")
+    file-print "pid1, pid2, P-scr-net"
+  ]
+  
+  ask people with [age = 18 and min-friend = 0 and max-friend = 0]
+  [
+    let target one-of people with [max-friend != 0]
+    set max-friend [max-friend] of target
+    set min-friend [min-friend] of target
+  ]
+  
+  ;if there are people whose number of friends is below to its minimum number of friends, they will seek for new friends
+  while [count people with [count in-friend-neighbors < min-friend] > 0]
+  [
+    ask people with [count in-friend-neighbors < min-friend]
+    [
+      let age-group1 age-group
+      let gender1 gender
+      let income-group1 income-group
+      let education-group1 education-group
+      let candidate-friends up-to-n-of 10 other people with [count in-friend-neighbors < max-friend and hhd != [hhd] of myself]
+      ask candidate-friends 
+      [set P-scr-net P-wgt-age * abs (age-group - age-group1) / length P-gro-age + P-wgt-gen * abs (gender - gender1) / 2 + P-wgt-inco * abs (income-group1 - income-group) / length P-gro-inco + P-wgt-edu * abs (education-group - education-group1) / length P-gro-edu]
+      let P-scr-net-max min-one-of candidate-friends with [P-scr-net <= P-min-net][P-scr-net]
+      if P-scr-net-max != nobody 
+      [
+        create-friend-with min-one-of candidate-friends [P-scr-net]
+        file-print (word pid "," [pid] of min-one-of candidate-friends [P-scr-net] "," [P-scr-net] of min-one-of candidate-friends [P-scr-net])
+      ]
+    ]
+ ]
+  file-close-all
+  print "network-model finished"
+end

@@ -1,0 +1,307 @@
+;This function is used to determine how many residential/commercial/office facilities will be developed, and where will they locate
+to activity-facility-development-model
+  develop-new-RFs
+  develop-new-CFFs
+  develop-new-CFBs
+  print "activity facility development model finished"
+end
+
+
+to develop-new-RFs
+  ;output information
+  if lan-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Land use")
+    let filename (word "New residential facility " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Land use/New residential facility " year ".csv")
+    file-print "RID,long,lat,price,rent,district,cap_add,exist"
+  ]
+  
+  ;residential facility
+  ;(1)	Step1: Calculate the city-scale Demand for New Activity Facilities 
+  let cap-res-tot sum [capacity] of RFs
+  let pop-tot count people
+  let rat-res-tot pop-tot / pop-tot
+  
+  ;(2)	Step2: Determine Whether to Add New Activity Facilities on each grid
+  if rat-res-tot > L-det-new
+  [
+    ask patches [set dem-rf 0]
+    
+    let cap-tot-new round (L-coe-cap * cap-res-tot * (Rat-res-tot - L-det-new))
+   
+    ask patches with [count rfs-here > 0]
+    [
+      set dem-rf count people-here / sum [capacity] of rfs-here
+      if dem-rf < L-det-new [set dem-rf 0]
+    ]
+    ask patches with [dem-rf > 0]
+    [
+      set dem-rf round (cap-tot-new * dem-rf / sum [dem-rf] of patches)
+      if dem-rf > 0 [set pcolor blue]
+    ]
+    
+    ;(3)Step3: Develop New Activity Facilities
+    
+    while [count patches with [pcolor = blue] > 0]
+    [
+      create-RFs 1
+      [
+        let target one-of patches with [pcolor = blue]
+        ;If there is already a residence in the grid, it will be expanded; if not, a new one will be added.
+        ifelse count RFs-on target > 0
+        [
+          ask one-of RFs-on target 
+          [
+            set capacity capacity + [dem-rf] of target 
+            set capacity capacity + [dem-rf] of target
+            if lan-output = 1 [file-print (Word RID "," long "," lat "," ResPrice "," ResRent "," [Pdistrict] of patch-here "," dem-rf "," 1)]
+          ]
+          ask target [set pcolor black]
+          die
+        ]
+        [
+          set RID max [RID] of RFs + 1
+          set capacity [dem-rf] of target
+          set capacity [dem-rf] of target
+          set ResPrice [ResPrice] of min-one-of RFs with [ResPrice != 0] [distance myself]
+          set ResRent [ResRent] of min-one-of RFs with [ResRent != 0][distance myself]
+          move-to target
+          ask target [set pcolor black]
+          ;Calculate latitude and longitude
+          let long1 []
+          let lat1 []
+          let xcor1 []
+          let ycor1 []
+          ask Schools with [long != 0 and lat != 0]
+          [
+            set xcor1 lput xcor xcor1
+            set ycor1 lput ycor ycor1
+            set long1 lput long long1
+            set lat1 lput lat lat1
+          ]
+          py:set "xcor1" xcor1
+          py:set "ycor1" ycor1
+          py:Set "long1" long1
+          py:set "lat1" lat1  
+          py:set "xcor2" xcor
+          py:Set "ycor2" ycor
+          (py:run
+            "import numpy as np"
+            "from scipy.optimize import curve_fit"
+            "import pandas as pd"
+            "def polynomial_function(x, a, b, c, d):"
+            " return a * x**3 + b * x**2 + c * x + d"
+            
+            "params_x, _ = curve_fit(polynomial_function, xcor1, long1)"
+            "params_y, _ = curve_fit(polynomial_function, ycor1, lat1)"
+            "long2 = polynomial_function(xcor2, *params_x)"
+            "lat2 = polynomial_function(ycor2, *params_y)"
+         )
+          set long py:runresult "long2"
+          set lat py:runresult "lat2"
+        ]
+        ask target [set pcolor black]
+      ]
+    ]
+  ]
+  file-close-all
+end
+
+to develop-new-CFFs
+  if lan-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Land use")
+    let filename (word "New commercial facility (for firm) " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Land use/New commercial facility (for firm) " year ".csv")
+    file-print "CFFID, long, lat, rent, district, cap_add, exist"
+  ]
+  
+  ;(1)	Step1: Calculate the city-scale Demand for New Activity Facilities 
+  let cap-CFF-tot sum [capacity] of CFFs
+  let emp-tot sum [size-firm] of firms
+  let rat-firm-tot emp-tot / cap-CFF-tot
+  if rat-firm-tot > L-det-new
+  [
+    ask patches [set dem-cff 0]
+    let cap-tot-new round (L-coe-cap * cap-cff-tot * (Rat-firm-tot - L-det-new))
+    ;(2)	Step2: Determine Whether to Add New Activity Facilities on each grid
+    ask patches with [count CFFs-here > 0]
+    [
+      set dem-CFF sum [size-firm] of firms-here / sum [capacity] of CFFs-here
+      if dem-CFF < L-det-new [set dem-CFF 0]
+    ]
+    ask patches with [dem-CFF > 0]
+    [
+      set dem-CFF round (cap-tot-new * dem-CFF / sum [dem-CFF] of patches)
+      if dem-CFF > 0 [set pcolor blue]
+    ]
+    
+    ;(3)Step3: Develop New Activity Facilities
+    while [count patches with [pcolor = blue] > 0]
+    [
+      create-CFFs 1
+      [
+        let target one-of patches with [pcolor = blue]
+        ;If there is already a residence in the grid, it will be expanded; if not, a new one will be added.
+        ifelse count CFFs-on target > 0
+        [
+          ask one-of CFFs-on target 
+          [
+            set capacity capacity + [dem-CFF] of target 
+            set capacity capacity + [dem-CFF] of target
+            if lan-output = 1 [file-print (Word CFFID "," long "," lat "," CFFrent ","  [pdistrict] of patch-here "," dem-cff "," 1)]
+          ]
+          ask target [set pcolor black]
+          die
+        ]
+        [
+          set RID max [RID] of CFFs + 1
+          set capacity [dem-CFF] of target
+          set capacity [dem-CFF] of target
+          set ResPrice [ResPrice] of min-one-of CFFs with [ResPrice != 0] [distance myself]
+          set ResRent [ResRent] of min-one-of CFFs with [ResRent != 0][distance myself]
+          move-to target
+          ask target [set pcolor black]
+          ;Calculate latitude and longitude
+          let long1 []
+          let lat1 []
+          let xcor1 []
+          let ycor1 []
+          ask Schools with [long != 0 and lat != 0]
+          [
+            set xcor1 lput xcor xcor1
+            set ycor1 lput ycor ycor1
+            set long1 lput long long1
+            set lat1 lput lat lat1
+          ]
+          py:set "xcor1" xcor1
+          py:set "ycor1" ycor1
+          py:Set "long1" long1
+          py:set "lat1" lat1  
+          py:set "xcor2" xcor
+          py:Set "ycor2" ycor
+          (py:run
+            "import numpy as np"
+            "from scipy.optimize import curve_fit"
+            "import pandas as pd"
+            "def polynomial_function(x, a, b, c, d):"
+            " return a * x**3 + b * x**2 + c * x + d"
+            
+            "params_x, _ = curve_fit(polynomial_function, xcor1, long1)"
+            "params_y, _ = curve_fit(polynomial_function, ycor1, lat1)"
+            "long2 = polynomial_function(xcor2, *params_x)"
+            "lat2 = polynomial_function(ycor2, *params_y)"
+         )
+          set long py:runresult "long2"
+          set lat py:runresult "lat2"
+          
+          if lan-output = 1 [file-print (Word CFFID "," long "," lat "," CFFrent ","  [pdistrict] of patch-here "," dem-cff "," 0)]
+        ]
+        ask target [set pcolor black]
+      ]
+    ]
+  ]
+  file-close-all
+end
+
+to develop-new-CFBs
+  if lan-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Land use")
+    let filename (word "New commercial facility (for businessman) " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Land use/New commercial facility (for businessman) " year ".csv")
+    file-print "CFBID,long,lat,rent,district,cap_add,exist"
+  ]
+  
+  ;(1)	Step1: Calculate the city-scale Demand for New Activity Facilities 
+  let cap-CFB-tot sum [capacity] of CFBs
+  let emp-tot sum [busi-size] of businessmen
+  let rat-busi-tot emp-tot / cap-CFB-tot
+  if rat-busi-tot > L-det-new
+  [
+    ask patches [set dem-cff 0]
+    let cap-tot-new round (L-coe-cap * cap-cfb-tot * (Rat-busi-tot - L-det-new))
+    ;(2)	Step2: Determine Whether to Add New Activity Facilities on each grid
+    ask patches with [count CFBs-here > 0]
+    [
+      set dem-CFB sum [busi-size] of businessmen-here / sum [capacity] of CFBs-here
+      if dem-CFB < L-det-new [set dem-CFB 0]
+    ]
+    ask patches with [dem-CFB > 0]
+    [
+      set dem-CFB round (cap-tot-new * dem-CFB / sum [dem-CFB] of patches)
+      if dem-CFB > 0 [set pcolor blue]
+    ]
+    
+    ;(3)Step3: Develop New Activity Facilities
+    while [count patches with [pcolor = blue] > 0]
+    [
+      create-CFBs 1
+      [
+        let target one-of patches with [pcolor = blue]
+        ;If there is already a residence in the grid, it will be expanded; if not, a new one will be added.
+        ifelse count CFBs-on target > 0
+        [
+          ask one-of CFBs-on target 
+          [
+            set capacity capacity + [dem-CFB] of target 
+            set capacity capacity + [dem-CFB] of target
+            if lan-output = 1 [file-print (Word CFBID "," long "," lat "," Rent-CFB ","  [pdistrict] of patch-here "," dem-cfb "," 1)]
+          ]
+          ask target [set pcolor black]
+          die
+        ]
+        [
+          set RID max [RID] of CFBs + 1
+          set capacity [dem-CFB] of target
+          set capacity [dem-CFB] of target
+          set ResPrice [ResPrice] of min-one-of CFBs with [ResPrice != 0] [distance myself]
+          set ResRent [ResRent] of min-one-of CFBs with [ResRent != 0][distance myself]
+          move-to target
+          ask target [set pcolor black]
+          ;Calculate latitude and longitude
+          let long1 []
+          let lat1 []
+          let xcor1 []
+          let ycor1 []
+          ask Schools with [long != 0 and lat != 0]
+          [
+            set xcor1 lput xcor xcor1
+            set ycor1 lput ycor ycor1
+            set long1 lput long long1
+            set lat1 lput lat lat1
+          ]
+          py:set "xcor1" xcor1
+          py:set "ycor1" ycor1
+          py:Set "long1" long1
+          py:set "lat1" lat1  
+          py:set "xcor2" xcor
+          py:Set "ycor2" ycor
+          (py:run
+            "import numpy as np"
+            "from scipy.optimize import curve_fit"
+            "import pandas as pd"
+            "def polynomial_function(x, a, b, c, d):"
+            " return a * x**3 + b * x**2 + c * x + d"
+            
+            "params_x, _ = curve_fit(polynomial_function, xcor1, long1)"
+            "params_y, _ = curve_fit(polynomial_function, ycor1, lat1)"
+            "long2 = polynomial_function(xcor2, *params_x)"
+            "lat2 = polynomial_function(ycor2, *params_y)"
+         )
+          set long py:runresult "long2"
+          set lat py:runresult "lat2"
+          
+          if lan-output = 1 [file-print (Word CFBID "," long "," lat "," Rent-CFB ","  [pdistrict] of patch-here "," dem-cfb "," 0)]
+        ]
+        ask target [set pcolor black]
+      ]
+    ]
+  ]
+  
+  file-close-all
+end

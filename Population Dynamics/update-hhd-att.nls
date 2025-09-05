@@ -1,0 +1,8 @@
+to update-hhd-att
+  ask people
+  [
+    set number count people with [hhd = [hhd] of myself]
+    set hhd-income (sum [income] of people with [hhd = [hhd] of myself] * 12)
+  ]
+  print "this loop finished"
+end

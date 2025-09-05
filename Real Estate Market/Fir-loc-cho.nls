@@ -1,0 +1,568 @@
+CFFs-own
+[
+  CFFID
+  CFFrent ;rent of capacity
+  capacity
+  available-space
+  long ;longitude
+  lat ;latitude
+  attractiveness ;attractiveness of CFF
+  CFFrent-max ;The maximum value that rent can rise to
+  CFFrent-min ;The minimum value that rent can fall to
+  CFFRent-previous
+  agg
+]
+
+CFrents-own
+[
+  accessibility
+  R-rent-CFF ;utility of rent
+  R-rent-acc ;utility of accessibility
+  R-rent-agg ;utility of agglomeration
+  R-scr-CFF ;total utility of the candidate office building
+]
+
+
+;The Firm Location Choice & Commercial Facility (for Firms) Price Model simulates the decision-making process of firm agents in selecting their commercial facilities -  agents’ locations and how commercial facilities - firms rental prices are updated during this process. 
+;The model outlines three key phases in the process of location selection and pricing: 
+;first, it determines whether the agent is a new firm agent entering the real estate market or an existing firm agent, and for existing firm agents, whether they need to relocate and then enter the real estate market; 
+;second, it simulates the choice of location for both newly established firm agents and those planning to move, and their negotiations with commercial facility - firms agents who may update rents based on firm agents’ choices; 
+;and third, it simulate how the transaction is eventually completed based on the negotiations. 
+
+
+
+to fir-loc-cho
+  set cff-rent-transaction 0
+  ;There are two steps in this fuction: 1) determine whether firms will move; 2) determine where to move
+  firm-attribute-update
+  print "firm-attribute-update finished"
+  firm-relocation-decision
+  print "firm-relocation-decision finished"
+  firm-location-choice
+  print "firm-location-choice finished"
+  OFF-transaction
+  print "OFF-transaction finished"
+  
+  ;output information
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Commercial facility (for firm) " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real estate/Commercial facility (for firm) " year ".csv")
+    file-print "CFFID,  previous_rent, new_rent, rent_change,ava_space,long,lat"
+    ask CFFs [file-print (word CFFID "," CFFRent-previous "," CFFRent "," (CFFRent - CFFRent-previous) "," available-space "," long ","lat)]
+    file-close-all
+  ]
+  
+  print "Firm location choice and office facility price model finished"
+end
+
+to firm-attribute-update
+  ;update agg and cost
+  ask firms with [age != 0]
+  [
+    ;update office cost
+    set office-cost-last office-cost
+    set office-cost office-cost-next
+    set agg-last agg
+    set agg sum [count in-employee-neighbors] of other firms in-radius neighborhood
+    if agg = 0 [set agg 1] ;In test cases, most firms have agg = 0, which prevents further calculations, so assign a value of 1
+    set acc-last acc
+  ]
+  
+  ;update accessibility     
+  ifelse dailyplan = "Simple" or (dailyplan != "Simple" and complex-acc = 0)
+  [
+    ask firms with [age != 0]
+    [
+      ask in-employee-neighbors [set dis-cur distance myself if dis-cur = 0 [set dis-cur 0.1]]
+      set acc 1 / sum [dis-cur] of in-employee-neighbors * count in-employee-neighbors
+    ]
+  ]
+  ;dailyplan = "Typical" or dailyplan = "Full"
+  [
+    ;output household information
+    let filefolder (word "Output/" year "/Acc Calculation/Input/Firm_first_round")
+    let filename "Housing_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/Firm_first_round/Housing_processed.csv")
+    file-print "hh_id,live_location,hh_people,hh_income"
+    ask firms with [age != 0]
+    [
+      ask in-employee-neighbors [ask one-of households with [hhd = [hhd] of myself][set color red]]
+    ]
+    ask households with [color = red]
+    [
+      file-print (Word hhd"," (word "POINT ("Long" "Lat")") "," hhd-size","hhd-income)
+    ]
+    file-close
+    ask households [set color white]
+
+    ;output person information
+    set filename "Person_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/Firm_first_round/Person_processed.csv")
+    file-print "unique_id, hh_id, job,ff_id, work_point"
+    ask firms with [age != 0]
+    [
+      let my-CFFID [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let ff_id (word [who] of myself "_" my-CFFID)
+        let unique_id (word PID "_" my-CFFID)
+        let work_point (word "POINT ("[Long] of myself" "[Lat] of myself")")
+        file-print (word unique_id","hhd",""firm"","ff_id","work_point)
+      ]
+    ]
+    file-close
+    
+    ;output weekday daily plan
+    set filename "Weekday_plan_with_location.csv"
+    py:set "Filename" filename
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/Firm_first_round/Weekday_plan_with_location.csv")
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    ask firms with [age != 0]
+    [
+      let my-CFFID [who] of one-of in-rent-neighbors
+      ask in-employee-neighbors
+      [
+        let num-activity length plan-weekday
+        let j 1
+        while [j < num-activity]
+        [
+          let hh_id hhd
+          let unique_id (word pid "_" my-CFFID)
+          let a1 item (j - 1) plan-weekday
+          let tt_o_purpose item 0 a1
+          let tt_mode item 5 a1
+          let a2 item j plan-weekday
+          let tt_d_purpose item 0 a2
+          let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+          let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+          file-print (word hh_id","unique_id","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+          set j j + 1
+        ]
+      ]
+    ]
+    file-close
+    
+    ;calculate accessibility by python
+    (py:run
+      "args = ['python', 'person_acc_calculation_selfsim_every_year.py', 'full_daily_plan', 'work']"
+      "subprocess.run(args)"
+    )
+    
+    ;read result
+    file-open "Mobility and Accessibility/Output/Typical_work.csv"
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "ff_id"
+      [
+        let FID1 item 0 data
+        ask firm FID1 [set acc item 2 data]
+      ]
+    ]
+    file-close
+  ]
+
+  ;assign the average accessibility of firms to new start-ups without a location
+  ask firms with [age = 0]
+  [
+    set office-cost-last office-cost
+    set office-cost office-cost-next
+    set agg-last agg
+    set acc mean [acc] of firms with [age != 0]
+  ]
+  
+  ask CFFs
+  [
+    set CFFRent-max CFFRent * R-up-CFF
+    set CFFRent-min CFFRent * R-low-CFF
+    set CFFRent-previous CFFRent
+    set agg sum [count in-employee-neighbors] of in-rent-neighbors
+  ]
+end
+
+
+to firm-relocation-decision ;determine whether firms will move  
+  ask firms with [location-choice = 0]
+  [
+    ;calculate utility of rent, accessibility, agglomeration, space
+    let R-rel-rent-firm (office-cost / office-cost-last) / (mean [office-cost] of firms / mean [office-cost-last] of firms) - 1
+    let R-rel-acc-firm (acc / acc-last) / (mean [acc] of firms / mean [acc-last] of firms) - 1
+    let R-rel-agg-firm (agg / agg-last) / (mean [agg] of firms / mean [agg-last] of firms) - 1
+    let R-space-rent-firm abs (emp-req - office-size) / office-size
+    let R-err-firm random-normal R-err-mean-firm R-err-std-firm
+    ;calculate the total utility
+    set R-uti-firm R-coe-rent-firm * R-rel-rent-firm + R-coe-acc-firm * R-rel-acc-firm + R-coe-agg-firm * R-rel-agg-firm + R-coe-space-firm * R-space-rent-firm + R-err-firm
+    
+    ;if the utility of move is greater than the threshold of move, the firm will move to another office building in this simulation year,
+    if R-uti-firm > R-move-firm [set location-choice 1]
+  ]
+end
+
+to firm-location-choice
+  ;mock negotiation 
+  ;Select candidates, and calculate accessibility and agglomeration of candidates
+  ;calculate accessibility
+  if dailyplan != "Simple" and Complex-acc = 1
+  [
+    ;generate household csv file
+    let filefolder (word "Output/" year "/Acc Calculation/Input/firm_second_round")
+    let filename "housing_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/housing_processed.csv")
+    file-print "hh_id,live_location,hh_people,hh_income"
+    file-close
+
+    ;generate person csv file
+    set filename "person_processed.csv"
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/person_processed.csv")
+    file-print "unique_id,hh_id,job,ff_id,work_point"
+    file-close
+    
+    ;generate weekday plan file
+    set filename "weekday_plan_with_location.csv"
+    py:set "filename" filename
+    clear-file filefolder filename
+    file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/weekday_plan_with_location.csv")
+    file-print "hh_id,unique_id,tt_mode,tt_o_purpose,tt_d_purpose,tt_o_xy,tt_d_xy,tt_daytype"
+    file-close
+    
+    print "Input files are created"
+    
+    ask firms with [location-choice = 1]
+    [
+      ask in-employee-neighbors [ask one-of households with [hhd = [hhd] of myself][set color red]]
+      file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/housing_processed.csv")
+      ask households with [color = red]
+      [
+        file-print (Word hhd"," (word "POINT ("Long" "Lat")") "," hhd-size","hhd-income)
+        set color white
+      ]
+      file-close
+    ]
+  ]
+  
+  ask firms with [location-choice = 1]
+  [
+    let mover self
+    ;Step 1: candidate selection
+    let candidates up-to-n-of R-can-CFF CFFs with [capacity >= [office-size] of myself]
+    create-CFrents-with candidates
+    ;Step 2: calculate utilities of agglomeration and accessibility
+    ask my-CFrents
+    [
+      let candidate1 other-end
+      ;calculate accessibility
+      ifelse dailyplan = "Simple" or (dailyplan != "Simple" and complex-acc = 0)
+      [
+        let acc1 0
+        ask mover
+        [
+          ask in-employee-neighbors [set dis-can distance candidate1 if dis-can = 0 [set dis-can 0.1]]
+          set acc1 1 / (sum [dis-can] of in-employee-neighbors / count in-employee-neighbors)
+        ]
+        set R-rent-acc acc1
+      ]
+      [
+        ;generate virtual daily plan 
+        ask mover
+        [
+          ask in-employee-neighbors
+          [
+            generate-virtual-firm-typical-plan candidate1
+            ;output person data
+            file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/person_processed.csv")
+            let unique_id (word PID "_" [who] of candidate1)
+            let work_point (word "POINT ("[Long] of candidate1" "[Lat] of candidate1")")
+            let ff_id (word [who] of mover "_" [who] of candidate1)
+            file-print (word unique_id","hhd",""firm"","ff_id","work_point)
+            file-close
+            
+            ;output virtual daily plan
+            file-open (word "Output/" year "/Acc Calculation/Input/firm_second_round/weekday_plan_with_location.csv")
+            let num-activity length vir-plan-weekday
+            let j 1
+            while [j < num-activity]
+            [
+              let a1 item (j - 1) vir-plan-weekday
+              let tt_o_purpose item 0 a1
+              let tt_mode item 5 a1
+              let a2 item j vir-plan-weekday
+              let tt_d_purpose item 0 a2
+              let tt_d_xy (word "POINT (" (item 2 a2)" " (item 3 a2) ")")
+              let tt_o_xy (word "POINT (" (item 2 a1)" " (item 3 a1) ")")
+              file-print (word hhd","unique_id","tt_mode","tt_o_purpose","tt_d_purpose","tt_o_xy","tt_d_xy",""weekday")
+              set j j + 1
+            ]
+            file-close 
+          ]
+        ]
+        print "Housheold, Person, Plan data are prepared"
+      ] 
+    ]
+  ]
+  
+  
+    
+  if dailyplan != "Simple" and complex-acc = 1
+  [
+    ;calculate acc of candidates
+    (py:run
+      "args = ['python', 'person_acc_calculation_selfsim_every_year.py', 'full_daily_plan', 'work']"
+      "subprocess.run(args)"
+    )
+    
+    file-open "Mobility and Accessibility/output/typical_work.csv"
+    while [not file-at-end?]
+    [
+      let data csv:from-row file-read-line
+      if item 0 data != "ff_id"
+      [
+        let FID1 item 0 data
+        let FFID1 item 4 data
+        ask firm FID1 
+        [
+          let target-link one-of my-CFrents with [other-end = CFF FFID1]
+          ask target-link [set accessibility item 2 data]
+        ]
+      ]
+    ]
+    file-close
+  ]
+  
+    
+  ask firms with [location-choice = 1]
+  [
+    ask my-CFrents
+    [
+      let candidate1 other-end
+      
+      ;calculate utility of agglomeration
+      set R-rent-agg [agg] of candidate1 / mean [agg] of CFFs - 1
+      set R-rent-CFF [CFFRent] of candidate1 / mean [CFFRent] of CFFs - 1
+      set R-rent-acc accessibility / mean [acc] of firms - 1
+      ;calculate utility
+      set R-scr-CFF R-wgt-rent-CFF * R-rent-CFF + R-wgt-acc-CFF * R-rent-acc + R-wgt-agg-CFF * R-rent-agg
+    ]
+  ]
+  
+  
+  let i 1
+  let increment R-neg-rent-CFF + 1
+  set ave-cff-rent sum [CFFRent * capacity] of CFFs / sum [capacity] of CFFs
+  while [R-neg-num-CFF >= i and R-neg-rent-CFF < increment]
+  [
+    if rea-output = 1
+    [
+      let filefolder (word "Output Data/" year "/Real Estate")
+      let filename (word year " CFF attractiveness of renting " i ".csv")
+      clear-file filefolder filename
+      file-open (word "Output Data/" year "/Real Estate/" year " CFF attractiveness of renting " i ".csv")
+      file-print "CFFID,Attractiveness"
+    ]
+    ask CFFs [set attractiveness 0]
+    ask CFFs with [available-space > 0]
+    [
+      set attractiveness sum [R-scr-CFF] of my-CFrents / available-space
+      if rea-output = 1
+      [
+        file-print (word CFFID","Attractiveness)
+      ]
+      (ifelse 
+        attractiveness > R-inc-CFF
+        [
+          ;update rent
+          set CFFRent CFFRent + R-pro-inc-CFF * (attractiveness - R-inc-CFF) * CFFRent
+          if CFFRent > CFFRent-max [set CFFRent CFFRent-max]
+          ;update utility
+          ask my-CFrents [set R-rent-CFF [CFFRent] of myself / mean [CFFRent] of CFFs set R-scr-CFF R-wgt-rent-CFF * R-rent-CFF + R-wgt-acc-CFF * R-rent-acc + R-wgt-agg-CFF * R-rent-agg]
+        ]
+        attractiveness < R-dec-CFF
+        [
+          ;update rent
+          set CFFRent CFFRent + R-pro-dec-CFF * (R-dec-CFF - attractiveness) * CFFRent
+          if CFFRent < CFFRent-min [set CFFRent CFFRent-min]
+          ;update utility
+          ask my-CFrents [set R-rent-CFF [CFFRent] of myself / mean [CFFRent] of CFFs set R-scr-CFF R-wgt-rent-CFF * R-rent-CFF + R-wgt-acc-CFF * R-rent-acc + R-wgt-agg-CFF * R-rent-agg ]
+        ]
+        [set CFFRent CFFRent]
+      )
+    ]
+    file-close
+
+    set i i + 1
+    set ave-cff-rent-last ave-cff-rent
+    set ave-cff-rent sum [CFFRent * capacity] of CFFs / sum [capacity] of CFFs
+    set increment abs (ave-cff-rent - ave-cff-rent-last) / ave-cff-rent-last
+  ]
+end
+
+to OFF-transaction
+  if rea-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Real estate")
+    let filename (word "Moving firms " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Real estate/Moving firms " year ".csv")
+    file-print "FID, previous_cf, new_cf"
+  ]
+  
+  ask CFrents with [R-scr-CFF < R-exp-firm][die]
+  ;simulate transaction after 5 times negotiation
+  while [count firms with [location-choice = 1 and count in-CFrent-neighbors > 0 and age = 0] > 0]
+  [
+    ask max-one-of firms with [location-choice = 1 and count in-CFrent-neighbors > 0 and age = 0] [emp-req] ;
+    [
+      let previous_cf "Null"
+      if count in-rent-neighbors = 1 [set previous_cf (Word "CFF " [CFFID] of one-of in-rent-neighbors)]        
+      set location-choice 0
+      let target-CFrent max-one-of my-CFrents [R-scr-CFF]
+      let target nobody
+      ask target-CFrent [set target other-end]
+      set acc [accessibility] of target-CFrent
+      ask my-CFrents [die]
+      create-rent-with target
+      set cff-rent-transaction cff-rent-transaction + 1
+      set long [long] of target
+      set lat [lat] of target
+      set office-size emp-req
+      set office-cost-next office-size * [CFFRent] of target
+      move-to target
+      ask target 
+      [
+        ;update capacity
+        set available-space available-space - [office-size] of myself
+        ;check whether the capacity is enough for firms who take this office building as a candidate. If the capacity is less than those firms' capacity, this office building will not be taken as a candidate by those firms.
+        ask my-CFrents with [[emp-req] of other-end < [capacity] of myself] [die]
+      ]
+      ask my-CFrents [die]
+      ask in-employee-neighbors [set color pink]
+      let new_cf (Word "CFF " [CFFID] of one-of in-rent-neighbors)
+      if rea-output = 1 [file-print (word FID ","  previous_cf "," new_cf)]
+    ]
+  ]
+  
+  ;For bew firms do not find a proper commercial facility to settle, they will rent a commercial facility with the lowest rent
+  while [count firms with [location-choice = 1 and age > 0 and count in-CFrent-neighbors > 0] > 0]
+  [
+    ask max-one-of firms with [location-choice = 1 and age > 0 and count in-CFrent-neighbors > 0][emp-req]
+    [
+      let previous_cf "Null"
+      if count in-rent-neighbors = 1 [set previous_cf (Word "CFF " [CFFID] of one-of in-rent-neighbors)]
+      let target-CFrent max-one-of my-CFrents [R-scr-CFF]
+      let target nobody
+      ask target-CFrent [set target other-end]
+      set acc [accessibility] of target-CFrent
+      ask my-rents [die]
+      let my-emp employee-neighbors
+      create-rent-with target
+      set location-choice 0
+      set cff-rent-transaction cff-rent-transaction + 1
+      set long [long] of target
+      set lat [lat] of target
+      set office-size emp-req
+      set office-cost-next office-size * [CFFRent] of target
+      move-to target
+      ask target 
+      [
+        ;update capacity
+        set available-space available-space - [office-size] of myself
+        ;check whether the capacity is enough for firms who take this office building as a candidate. If the capacity is less than those firms' capacity, this office building will not be taken as a candidate by those firms.
+        ask my-CFrents with [[emp-req] of other-end < [capacity] of myself] [die]
+      ]
+      ask my-emp
+      [
+        set welong [long] of myself
+        set welat [lat] of myself
+        ask one-of households with [hhd = [hhd] of myself][set flexible flexible + 1]
+      ]
+      ask my-CFrents [die]
+      ask in-employee-neighbors [set color pink]
+      
+      let new_cf (Word "CFF " [CFFID] of one-of in-rent-neighbors)
+      if rea-output = 1 [file-print (word FID ","  previous_cf "," new_cf)]
+    ]
+  ]
+  
+  while [count firms with [location-choice = 1 and age = 0] > 0]
+  [
+    ask max-one-of firms with [location-choice = 1 and age = 0][emp-req]
+    [
+      let target nobody
+      ifelse count CFFs with [capacity >= [emp-req] of myself] > 0
+      [
+        set target min-one-of CFFs with [capacity >= [emp-req] of myself][CFFRent]
+        set office-size emp-req
+      ]
+      [
+        set target max-one-of CFFs with [available-space > 0] [available-space]
+        set office-size [available-space] of CFFs
+      ]
+      create-rent-with target
+      set location-choice 0
+      set cff-rent-transaction cff-rent-transaction + 1
+      set long [long] of target
+      set lat [lat] of target
+      set office-cost-next office-size * [CFFRent] of target
+      ask target 
+      [
+        ;update capacity
+        set available-space available-space - [office-size] of myself
+      ]
+      ask in-employee-neighbors [set color pink]
+      let new_cf (Word "CFF " [CFFID] of one-of in-rent-neighbors)
+      if rea-output = 1 [file-print (word FID ","  "Null" "," new_cf)]
+    ] 
+  ]
+  
+  file-close-all
+  
+  ask firms with [acc = 0][set acc mean [acc] of firms with [acc != 0]]
+  
+  ;update employees daily plan
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/FLC-CFR")
+    let filename (word "Moving firm " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/FLC-CFR/Moving firm " year ".csv")
+    file-print "PID,Weekday"
+  ]
+  
+  ask people with [color = pink]
+  [
+    work-change one-of in-employee-neighbors
+    set color white
+    if dai-output = "Always" and dailyplan != "Simple" [file-print (word PID "," Plan-weekday)]
+    if dai-output = "Year-End" [set plan-changed 1]
+  ]
+  
+  file-close
+  
+  ;update daily plan
+  if dai-output = "Always"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/FLC-CFR/Moving firm " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/FLC-CFR/DailyPlan_FLC.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_weekday_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_weekday_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+end

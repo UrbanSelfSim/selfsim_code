@@ -1,0 +1,85 @@
+;Death model simulates the removal of person agents from the population by modelling deaths based on a predefined annual number of deaths
+to death-model  
+  let num-deaths item (year - base-year - 1) P-dea ;determine how many people will die in this simulation year
+  let death-list []
+    
+  ;output information
+  if pop-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Population")
+    let filename (word "Death " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Population/Death " year ".csv")
+    file-print "pid, age, hhd, status"
+  ]  
+  
+  while [num-deaths > 0]
+  [
+    set num-deaths num-deaths - 1
+    let target one-of people    
+    let pid1 [pid] of target 
+    let age1 [age] of target
+    let hhd1 [hhd] of target
+    let status1 [status] of target
+    if pop-output = 1 [file-print (word pid1 "," age1 "," hhd1 "," status1)]
+    ask target
+    [
+      set death-list lput PID death-list
+      ifelse relationship != 1
+      [die] ;the person agent is not a householder
+      [
+        ;the person agent is a householder
+        ;
+        ifelse count other people with [hhd = [hhd] of myself] > 0
+        [
+          ;if the householder deads and the number of family members is not less than 2, another person will be designated as householder
+          ask one-of households with [hhd = [hhd] of myself][set flexible flexible + 1]
+          set relationship 0
+          ifelse (count other people with [hhd = hhd1 and age >= 18] > 0)
+          [ask one-of other people with [hhd = hhd1 and age >= 18] [set relationship 1]]
+          [ask one-of other people with [hhd = hhd1][set relationship 1]]
+          let hhder one-of people with [hhd = hhd1 and relationship = 1]
+          ask hhder 
+          [
+            update-relationship hhd1 hhder
+            ask one-of households with [hhd = [hhd] of myself][set flexible flexible + 1]
+          ]
+          die
+        ]
+        [
+          ask one-of households with [hhd = [hhd] of myself][die]
+          die 
+        ]
+      ]
+    ]
+  ]
+  file-close
+  
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Death")
+    let filename (word "Death list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Death/Death list " year ".csv")
+    file-print "PID"
+    
+    
+    let i (length death-list - 1)
+    while [i >= 0] [file-print item i death-list set i i - 1]
+    file-close
+    
+    let updated_csv (word "Output Data/" year "/Human mobility/Death/Death list " year ".csv")
+    let main_output_path "Output Data/DailyPlan.xml"
+    let second_output_path (word "Output Data/" year "/Human mobility/Death/DailyPlan-death " year ".xml")
+    
+    let params (list (list "updated_csv" (word updated_csv)) (list "main_output_path" (word main_output_path)) (list "second_output_path" (word second_output_path)))
+    
+    let request web:make-request "http://127.0.0.1:5000/delete_plans" "POST" params []
+    print request
+    
+  ]
+  
+  ask households [set hhd-size count people with [hhd = [hhd] of myself] set hhd-income sum [income] of people with [hhd = [hhd] of myself] * 12]
+  ask households with [hhd-size = 0] [die]
+  print "death model finished"
+end

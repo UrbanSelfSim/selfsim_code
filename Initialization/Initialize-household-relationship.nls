@@ -1,0 +1,160 @@
+to initialize-relationship  
+  ; Create connections
+  let j min [who] of people
+  let num-person max [who] of people
+  while [j < num-person]
+  [
+    ask person j 
+    [
+      if (relationship = 1) ; Householder
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and relationship = 2 and hhd = [hhd] of myself]
+        if hw != nobody [create-Spouse-with hw]
+        
+        ; Parents
+        let fm other people with [not link-neighbor? myself and relationship = 4 and hhd = [hhd] of myself]
+        if (fm != nobody) [create-parents-with fm]
+        
+        ; Children
+        let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (sd != nobody) [create-parents-with sd]
+        
+        ; Grandchildren
+        let gsd other people with [not link-neighbor? myself and relationship = 6 and hhd = [hhd] of myself]
+        if (gsd != nobody) [create-grapas-with gsd]
+        
+        ; Grandparents
+        let gp other people with [not link-neighbor? myself and (relationship = 7 or relationship = 8) and hhd = [hhd] of myself]
+        if (gp != nobody) [create-grapas-with gp]
+      ]
+        
+      if (relationship = 2) ; Householder's spouse
+      [
+        ; Children
+        let children other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (children != nobody) [create-parents-with children]
+        
+        ; Parents
+        let fm other people with [not link-neighbor? myself and relationship = 5 and hhd = [hhd] of myself]
+        if (fm != nobody) [create-parents-with fm]
+        
+        ; Grandparents
+        let gp other people with [not link-neighbor? myself and (relationship = 9 or relationship = 10) and hhd = [hhd] of myself]
+        if (gp != nobody) [create-grapas-with gp]
+        
+        ; Grandchildren
+        let sd other people with [not link-neighbor? myself and relationship = 3 and hhd = [hhd] of myself]
+        if (sd != nobody) [create-parents-with sd]
+      ]
+      
+      if (relationship = 3 and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20))) ; Householder's children
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 13 and gender != [gender] of myself]
+        if hw != nobody [create-Spouse-with hw]
+      ]
+      
+      if (relationship = 4) ; Householder's parents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
+        if hw != nobody [create-Spouse-with hw]
+        
+        ; Children
+        let children other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 1 or relationship = 11)]
+        if (children != nobody) [create-parents-with children]
+        
+        ; Parents
+        ifelse (gender = 1) 
+        [
+          ; If the agent is the householder's father, connect to householder's grandparents
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        [
+          ; If the agent is the householder's mother, connect to householder's maternal grandparents
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        
+        ; Grandchildren
+        let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
+        if (gsd != nobody) [create-grapas-with gsd]
+      ]
+      
+      if (relationship = 5) ; Householder's spouse's parents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 5]
+        if hw != nobody [create-Spouse-with hw]
+        
+        ; Parents
+        ifelse (gender = 1)
+        [
+          ; If the agent is the householder's spouse's father, connect to householder's spouse's grandparents
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        [
+          ; If the agent is the householder's spouse's mother, connect to householder's spouse's maternal grandparents
+          let fm other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 108]
+          if (fm != nobody) [create-parents-with fm]
+        ]
+        
+        ; Grandchildren
+        let gsd other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 3]
+        if (gsd != nobody) [create-grapas-with gsd]
+      ]
+    
+      if (relationship = 6) ; Householder's grandchildren
+      [
+        ; Parents
+        let fm1 one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and ((gender = 1 and age >= 22) or (gender = 0 and age >= 20)) and relationship = 3]
+        if (fm1 != nobody)
+        [
+          create-parent-with fm1
+          let fm2 one-of other people with [Spouse-neighbor? fm1]
+          if (fm2 != nobody) [create-parent-with fm2]
+        ]
+      ]
+      
+      if (relationship = 7) ; Householder's paternal grandparents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 7]
+        if hw != nobody [create-Spouse-with hw]
+      ]
+      
+      if (relationship = 8) ; Householder's maternal grandparents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 8]
+        if hw != nobody [create-Spouse-with hw]
+      ]
+      
+      if (relationship = 9) ; Householder's spouse's paternal grandparents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 9]
+        if hw != nobody [create-Spouse-with hw]
+      ]
+      
+      if (relationship = 10) ; Householder's spouse's maternal grandparents
+      [
+        ; Husband or Wife
+        let hw one-of other people with [not link-neighbor? myself and hhd = [hhd] of myself and relationship = 10]
+        if hw != nobody [create-Spouse-with hw]
+      ]
+      
+      if (Relationship = 11) ; Householder's siblings
+      [
+        ; Grandparents
+        let gp other people with [not link-neighbor? myself and hhd = [hhd] of myself and (relationship = 7 or relationship = 8)]
+        if gp != nobody [create-grapas-with gp]
+      ]
+    ]
+    set j j + 1
+  ]
+  ask links [hide-link]
+end

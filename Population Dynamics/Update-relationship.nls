@@ -1,0 +1,220 @@
+;This function generates a brand-new household relationship for each family.
+
+to update-relationship [householdid householder]
+  ;set all members' relationship to 0
+  ask householder [ask other people with [hhd = householdid][set relationship 0]]
+  
+  let hhder-spouse one-of people with [spouse-neighbor? householder]
+  if (hhder-spouse != nobody)
+  [
+    ;spouse of householder
+    ask hhder-spouse [if hhd = householdid [set relationship 2]]
+    
+    ;Parents of the spouse of the head of household
+    ask people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and parent-neighbor? hhder-spouse][set relationship 5]
+    
+    let father one-of people with [hhd = householdid and relationship = 5 and gender = 1]
+    if father != nobody
+    [
+      ask people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and parent-neighbor? father] [set relationship 9]
+    ]
+    
+    let mother one-of people with [hhd = householdid and relationship = 5 and gender = 0]
+    if mother != nobody
+    [
+      ask people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and parent-neighbor? mother] [set relationship 10]
+    ]
+    
+    ;seek for of grandparents of head of household spouse
+    if (father != nobody and mother = nobody)
+    [
+      ask people with [hhd = householdid and relationship = 0 and age < [age] of hhder-spouse and grapa-neighbor? hhder-spouse and not parent-neighbor? father]
+      [set relationship 10]
+    ]
+  
+    ;seek for Grandparents of the spouse of the head of household
+    if (father = nobody and mother != nobody)
+    [
+      ask people with [hhd = householdid and relationship = 0 and age < [age] of hhder-spouse and grapa-neighbor? hhder-spouse and not parent-neighbor? mother]
+      [set relationship 9]
+    ]
+    
+    
+    if (father = nobody and mother = nobody)
+    [
+      let n1 count people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+      
+      if (n1 = 1)  
+      [
+        ask people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        [
+          let p random 2
+          ifelse (p = 1) [set relationship 9][set relationship 10]
+        ]
+      ]
+      
+      if (n1 = 2) 
+      [
+        let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        ask grapa1
+        [
+          ifelse (spouse-neighbor? grapa2) 
+          [
+            let p random 2
+            ifelse p = 1
+            [set relationship 9 ask grapa2 [set relationship 9]]
+            [set relationship 10 ask grapa2 [set relationship 10]]
+          ]
+          [
+            set relationship 9
+            ask grapa2 [set relationship 10]
+          ]
+        ]
+      ]
+      
+      if (n1 = 3) 
+      [
+        let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and count in-spouse-neighbors = 1]
+        let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and spouse-neighbor? grapa1]
+        let grapa3 one-of people with [who != [who] of grapa1 and who != [who] of grapa2 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        let p random 2
+        ifelse p = 1
+        [
+          ask grapa1 [set relationship 9]
+          ask grapa2 [set relationship 9]
+          ask grapa3 [set relationship 10]
+        ]
+        [
+          ask grapa1 [set relationship 10]
+          ask grapa2 [set relationship 10]
+          ask grapa3 [set relationship 9]
+        ]
+      ]
+      
+      if (n1 = 4) 
+      [
+        let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and spouse-neighbor? grapa1]
+        let grapa3 one-of people with [who != [who] of grapa1 and not grapa2 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse]
+        let grapa4 one-of people with [who != [who] of grapa1 and not grapa2 and not grapa3 and hhd = householdid and relationship = 0 and age > [age] of hhder-spouse and grapa-neighbor? hhder-spouse and spouse-neighbor? grapa3]
+        ask grapa1 [set relationship 9]
+        ask grapa2 [set relationship 9]
+        ask grapa3 [set relationship 10]
+        ask grapa4 [set relationship 10]
+      ]
+    ]
+  ]
+  
+  ;Children of the head of household
+  ask people with [hhd = householdid and relationship = 0 and age < [age] of householder and parent-neighbor? householder] [set relationship 3]
+  
+  ;Parents of head of household
+  ask people with [hhd = householdid and relationship = 0 and age > [age] of householder and parent-neighbor? householder] [set relationship 4]  
+
+  ;Grandchildren of the head of household
+  ask people with [hhd = householdid and relationship = 0 and age < [age] of householder and grapa-neighbor? householder][set relationship 6]
+
+  ;seek for grandparents of the head of household 
+  let father one-of people with [hhd = householdid and relationship = 4 and gender = 1]
+  if father != nobody
+  [
+    ask people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and parent-neighbor? father] [set relationship 7]
+  ]
+
+  let mother one-of people with [hhd = householdid and relationship = 4 and gender = 0]
+  if mother != nobody
+  [
+    ask people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and parent-neighbor? mother] [set relationship 8]
+  ]
+  
+  if (father != nobody and mother = nobody)
+  [
+    ask people with [hhd = householdid and relationship = 0 and age < [age] of householder and grapa-neighbor? householder and not parent-neighbor? father]
+    [set relationship 8]
+  ]
+  
+  if (father = nobody and mother != nobody)
+  [
+    ask people with [hhd = householdid and relationship = 0 and age < [age] of householder and grapa-neighbor? householder and not parent-neighbor? mother]
+    [set relationship 7]
+  ]
+  
+  if (father = nobody and mother = nobody)
+  [
+    let n1 count people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+    
+    if (n1 = 1)  
+    [
+      ask people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      [
+        let p random 2
+        ifelse (p = 1) [set relationship 7][set relationship 8]
+      ]
+    ]
+    
+    if (n1 = 2) 
+    [
+      let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      ask grapa1
+      [
+        ifelse (spouse-neighbor? grapa2) 
+        [
+          let p random 2
+          ifelse p = 1
+          [set relationship 7 ask grapa2 [set relationship 7]]
+          [set relationship 8 ask grapa2 [set relationship 8]]
+        ]
+        [
+          set relationship 7
+          ask grapa2 [set relationship 8]
+        ]
+      ]
+    ]
+    
+    if (n1 = 3)
+    [
+      let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and count in-spouse-neighbors = 1]
+      let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and spouse-neighbor? grapa1]
+      let grapa3 one-of people with [who != [who] of grapa1 and who != [who] of grapa2 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      let p random 2
+      ifelse p = 1
+      [
+        ask grapa1 [set relationship 7]
+        ask grapa2 [set relationship 7]
+        ask grapa3 [set relationship 8]
+      ]
+      [
+        ask grapa1 [set relationship 8]
+        ask grapa2 [set relationship 8]
+        ask grapa3 [set relationship 7]
+      ]
+    ]
+    
+    if n1 = 4
+    [
+      let grapa1 one-of people with [hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      let grapa2 one-of people with [who != [who] of grapa1 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and spouse-neighbor? grapa1]
+      let grapa3 one-of people with [who != [who] of grapa1 and who != [who] of grapa2 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder]
+      let grapa4 one-of people with [who != [who] of grapa1 and who != [who] of grapa2 and who != [who] of grapa3 and hhd = householdid and relationship = 0 and age > [age] of householder and grapa-neighbor? householder and spouse-neighbor? grapa3]
+      ask grapa1 [set relationship 7]
+      ask grapa2 [set relationship 7]
+      ask grapa3 [set relationship 8]
+      ask grapa4 [set relationship 8]
+    ]
+  ]
+
+  
+  if (father != nobody)[ask people with [hhd = householdid and relationship = 0 and age < [age] of father and parent-neighbor? father] [set relationship 11]] 
+  if (mother != nobody)[ask people with [hhd = householdid and relationship = 0 and age < [age] of mother and parent-neighbor? mother] [set relationship 11]]
+  
+  
+  ask people with [hhd = householdid and relationship = 3]
+  [
+    let hw people with [spouse-neighbor? myself and hhd = householdid]
+    if hw != nobody [ask hw [set relationship 13]]
+  ]
+  
+  ask people with [hhd = householdid and relationship = 0][set relationship 12]
+end

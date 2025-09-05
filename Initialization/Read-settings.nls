@@ -1,0 +1,313 @@
+to read-settings
+  file-close-all ; close all open files
+  
+  file-open (word "Scenarios/" Study-Area "/Settings/global.csv")
+  let headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    if item 0 data = "Neighborhood" [set neighborhood item 1 data]
+    if item 0 data = "DailyPlan" [set DailyPlan item 1 data]
+    if item 0 data = "SocialNetwork" [set Social-Network item 1 data]
+    if item 0 data = "PopOut" [set Pop-output item 1 data]
+    if item 0 data = "BusOut" [set Bus-output item 1 data]
+    if item 0 data = "ReaOut" [set Rea-output item 1 data]
+    if item 0 data = "LanOut" [set Lan-output item 1 data]
+    if item 0 data = "DaiOut" [set Dai-output item 1 data]
+    if item 0 data = "ComplexAcc" [set Complex-acc item 1 data]
+    if item 0 data = "Route" [set Route item 1 data]
+  ]
+  file-close
+    
+  ;read configuration files of population dynamics model
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Pop_config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    ;Birth model
+    if item 0 data = "P-age-bir" [set P-age-bir item 1 data]
+    if item 0 data = "P-max-bir" [set P-max-bir item 1 data]
+    if item 0 data = "P-decay-bir" [set P-decay-bir item 1 data]
+    if item 0 data = "P-coe-bir" [set P-coe-bir item 1 data]
+  
+    ; Retirement model
+    if item 0 data = "P-age-ret-male" [set P-age-ret-male item 1 data]
+    if item 0 data = "P-age-ret-fem" [set P-age-ret-fem item 1 data]
+    if item 0 data = "P-inco-ret" [set P-inco-ret item 1 data]
+  
+    ; Marriage model
+    if item 0 data = "P-age-mar-male" [set P-age-mar-male item 1 data]
+    if item 0 data = "P-age-mar-fem" [set P-age-mar-fem item 1 data]
+  
+    ; Income model
+    if item 0 data = "P-min-inco" [set P-min-inco item 1 data]
+  ]
+  file-close
+  
+  ;read configuration files of education and school parameters
+  set P-pro-fur []
+  set P-edu-fur []
+  set P-edu-sch []
+  set B-coe-lab-sch []
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Education Configuration/Education School.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-edu-sch lput (list item 0 data item 1 data item 2 data) P-edu-sch
+  ]
+  set P-edu-sch remove-item 0 P-edu-sch
+  file-close
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Education Configuration/Education Progression.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data != "Education"
+    [set P-pro-fur lput (list item 0 data item 1 data) P-pro-fur] 
+  ]
+  set P-pro-fur remove-item 0 P-pro-fur
+  file-close
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Education Configuration/Education Progression Details.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-edu-fur lput (list item 0 data item 1 data item 2 data) P-edu-fur
+  ]
+  set P-edu-fur remove-item 0 P-edu-fur
+  file-close
+  
+  ;Read annual demographic data
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Annual Demographic Data/Annual Demographic Data.csv")
+  set P-bir []
+  set P-dea []
+  set P-imm []
+  set P-emi []
+  set P-mar []
+  set P-div []
+  set P-cha-inco []
+  while [ not file-at-end? ] 
+  [
+    let data csv:from-row file-read-line
+    set P-bir lput item 1 data P-bir
+    set P-dea lput item 2 data P-dea
+    set P-imm lput item 3 data P-imm
+    set P-emi lput item 4 data P-emi
+    set P-mar lput item 5 data P-mar
+    set P-div lput item 6 data P-div
+    set P-cha-inco lput item 7 data P-cha-inco
+  ]
+  set P-bir remove-item 0 P-bir
+  set P-dea remove-item 0 P-dea
+  set P-mar remove-item 0 P-mar
+  set P-div remove-item 0 P-div
+  set P-emi remove-item 0 P-emi
+  set P-imm remove-item 0 P-imm
+  set P-cha-inco remove-item 0 P-cha-inco
+  file-close
+  
+  ;Social network
+  set P-gro-age []
+  set P-gro-inco []
+  set P-gro-edu []
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Social Network/Income group.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-gro-inco lput data P-gro-inco
+  ]
+  set P-gro-inco remove-item 0 P-gro-inco
+  file-close
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Social Network/Age group.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-gro-age lput data P-gro-age
+  ]
+  set P-gro-age remove-item 0 P-gro-age
+  file-close
+  
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Social Network/Education group.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set P-gro-edu lput data P-gro-edu
+  ]
+  set P-gro-edu remove-item 0 P-gro-edu
+  file-close
+  
+  file-open (word "Scenarios/" Study-Area "/Settings/Population Dynamics/Social Network/Soc_net_config.csv")
+  let header csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data = "P-wgt-age" [set P-wgt-age item 1 data]
+    if item 0 data = "P-wgt-gen" [set P-wgt-gen item 1 data]
+    if item 0 data = "P-wgt-inco" [set P-wgt-inco item 1 data]
+    if item 0 data = "P-wgt-edu" [set P-wgt-edu item 1 data]
+    if item 0 data = "P-min-net" [set P-min-net item 1 data]
+  ]
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration files of business occupier and school dynamics
+  file-open (word "Scenarios/" Study-Area "/Settings/Business Ocuppier & School Dynamics/Bus_dyn_config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    ;firm birth model
+    if item 0 data = "B-pro-lab" [set B-pro-lab item 1 data]
+    if item 0 data = "B-pro-firm-exi" [set B-pro-firm-exi item 1 data]
+    if item 0 data = "B-mean-firm" [set B-mean-firm item 1 data]
+    if item 0 data = "B-std-firm" [set B-std-firm item 1 data]
+    if item 0 data = "B-up-firm" [set B-up-firm item 1 data]
+    if item 0 data = "B-low-firm" [set B-low-firm item 1 data]
+    if item 0 data = "B-coe-size-firm" [set B-coe-size-firm item 1 data]
+    if item 0 data = "B-coe2-size-firm" [set B-coe2-size-firm item 1 data]
+    if item 0 data = "B-coe-age-firm" [set B-coe-age-firm item 1 data]
+    if item 0 data = "B-coe-acc" [set B-coe-acc item 1 data]
+    if item 0 data = "B-SF-firm" [set B-SF-firm item 1 data]
+    if item 0 data = "B-clo-year-firm" [set B-clo-year-firm item 1 data]
+    if item 0 data = "B-coe-liv-sho" [set B-coe-liv-sho item 1 data]
+    if item 0 data = "B-coe-liv-lei" [set B-coe-liv-lei item 1 data]
+    if item 0 data = "B-coe-we-sho" [set B-coe-we-sho item 1 data]
+    if item 0 data = "B-coe-we-lei" [set B-coe-we-lei item 1 data]
+    if item 0 data = "B-coe-bir-busi-sho" [set B-coe-bir-busi-sho item 1 data]
+    if item 0 data = "B-coe-bir-busi-lei" [set B-coe-bir-busi-lei item 1 data]
+    if item 0 data = "B-mean-busi" [set B-mean-busi item 1 data]
+    if item 0 data = "B-std-busi" [set B-std-busi item 1 data]
+    if item 0 data = "B-up-busi" [set B-up-busi item 1 data]
+    if item 0 data = "B-low-busi" [set B-low-busi item 1 data]
+    if item 0 data = "B-coe-size-busi" [set B-coe-size-busi item 1 data]
+    if item 0 data = "B-coe2-size-busi" [set B-coe2-size-busi item 1 data]
+    if item 0 data = "B-coe-age-busi" [set B-coe-age-busi item 1 data]
+    if item 0 data = "B-coe-flow" [set B-coe-flow item 1 data]
+    if item 0 data = "B-SF-busi" [set B-SF-busi item 1 data]
+    if item 0 data = "B-clo-year-busi" [set B-clo-year-busi item 1 data]
+    if item 0 data = "B-coe-sch" [set B-coe-sch item 1 data]
+    if item 0 data = "B-pro-bir-sch" [set B-pro-bir-sch item 1 data]
+    if item 0 data = "B-coe-dis-sch" [set B-coe-dis-sch item 1 data]
+    if item 0 data = "B-sch-clo" [set B-sch-clo item 1 data]
+    if item 0 data = "B-coe-dis-lab" [set B-coe-dis-lab item 1 data]
+  ]
+  file-close
+  
+  file-open (word "Scenarios/" Study-Area "/Settings/Business Ocuppier & School Dynamics/School Staff.csv")
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set B-coe-lab-sch lput item 1 data B-coe-lab-sch
+  ]
+  set B-coe-lab-sch remove-item 0 B-coe-lab-sch
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration file of land use model
+  file-open (word "Scenarios/" Study-Area "/Settings/Land Use/Lan_use_config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data = "L-coe-cap" [set L-coe-cap	item 1 data]
+    if item 0 data = "L-det-new" [set L-det-new item 1 data]
+  ]
+  file-close
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration file of real estate model
+  file-open (word "Scenarios/" Study-Area "/Settings/Real Estate Market/Rea_Est_Config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    ;residential location choice
+    if item 0 data = "R-can-res" [set R-can-res item 1 data]
+    if item 0 data = "R-neg-num-res" [set R-neg-num-res item 1 data]
+    if item 0 data = "R-neg-pri-res" [set R-neg-pri-res item 1 data]
+    if item 0 data = "R-loss" [set R-loss item 1 data]
+    if item 0 data = "R-move-pur" [set R-move-pur item 1 data]
+    if item 0 data = "R-move-rent" [set R-move-rent item 1 data]
+    if item 0 data = "R-up-pri-RF" [set R-up-pri-RF item 1 data]
+    if item 0 data = "R-low-pri-RF" [set R-low-pri-RF item 1 data]
+    if item 0 data = "R-up-rent-RF" [set R-up-rent-RF item 1 data]
+    if item 0 data = "R-low-rent-RF" [set R-low-rent-RF item 1 data]
+    
+    if item 0 data = "R-pro-inc-pri" [set R-pro-inc-pri item 1 data]
+    if item 0 data = "R-pro-dec-pri" [set R-pro-dec-pri item 1 data]
+    if item 0 data = "R-inc-pur" [set R-inc-pur item 1 data]
+    if item 0 data = "R-dec-pur" [set R-dec-pur item 1 data]
+    if item 0 data = "R-wgt-acc-pur" [set R-wgt-acc-pur item 1 data]
+    if item 0 data = "R-wgt-pri-pur" [set R-wgt-pri-pur item 1 data]
+    if item 0 data = "R-aff-pur" [set R-aff-pur item 1 data]
+    if item 0 data = "R-exp-hou-pur" [set R-exp-hou-pur item 1 data]
+    if item 0 data = "R-pro-inc-rent" [set R-pro-inc-rent item 1 data]
+    if item 0 data = "R-pro-dec-rent" [set R-pro-dec-rent item 1 data]
+    if item 0 data = "R-inc-rent" [set R-inc-rent item 1 data]
+    if item 0 data = "R-dec-rent" [set R-dec-rent item 1 data]
+    if item 0 data = "R-wgt-acc-rent" [set R-wgt-acc-rent item 1 data]
+    if item 0 data = "R-wgt-pri-rent" [set R-wgt-pri-rent item 1 data]
+    if item 0 data = "R-aff-rent" [set R-aff-rent item 1 data]
+    if item 0 data = "R-exp-hou-rent" [set R-exp-hou-rent item 1 data]
+  
+    if item 0 data = "R-coe-rent-firm" [set R-coe-rent-firm item 1 data]
+    if item 0 data = "R-coe-acc-firm" [set R-coe-acc-firm item 1 data]
+    if item 0 data = "R-coe-agg-firm" [set R-coe-agg-firm item 1 data]
+    if item 0 data = "R-coe-space-firm" [set R-coe-space-firm item 1 data]
+    if item 0 data = "R-move-firm" [set R-move-firm item 1 data]
+    if item 0 data = "R-wgt-rent-CFF" [set R-wgt-rent-CFF item 1 data]
+    if item 0 data = "R-wgt-acc-CFF" [set R-wgt-acc-CFF item 1 data]
+    if item 0 data = "R-wgt-agg-CFF" [set R-wgt-agg-CFF item 1 data]
+    if item 0 data = "R-exp-firm" [set R-exp-firm item 1 data]
+    if item 0 data = "R-pro-inc-CFF" [set R-pro-inc-CFF item 1 data]
+    if item 0 data = "R-pro-dec-CFF" [set R-pro-dec-CFF item 1 data]
+    if item 0 data = "R-inc-CFF" [set R-inc-CFF item 1 data]
+    if item 0 data = "R-dec-CFF" [set R-dec-CFF item 1 data]
+    if item 0 data = "R-up-CFF" [set R-up-CFF item 1 data]
+    if item 0 data = "R-low-CFF" [set R-low-CFF item 1 data]
+    if item 0 data = "R-can-CFF" [set R-can-CFF item 1 data]
+    if item 0 data = "R-neg-num-CFF" [set R-neg-num-CFF item 1 data]
+    if item 0 data = "R-neg-rent-CFF" [set R-neg-rent-CFF item 1 data]
+  
+    if item 0 data = "R-pro-inc-CFB" [set R-pro-inc-CFB item 1 data]
+    if item 0 data = "R-pro-dec-CFB" [set R-pro-dec-CFB item 1 data]
+    if item 0 data = "R-inc-CFB" [set R-inc-CFB item 1 data]
+    if item 0 data = "R-dec-CFB" [set R-dec-CFB item 1 data]
+    if item 0 data = "R-max-rent-CFB" [set R-max-rent-CFB item 1 data]
+    if item 0 data = "R-min-rent-CFB" [set R-min-rent-CFB item 1 data]
+    if item 0 data = "R-wgt-rent-CFB" [set R-wgt-rent-CFB item 1 data]
+    if item 0 data = "R-wgt-agg-CFB" [set R-wgt-agg-CFB item 1 data]
+    if item 0 data = "R-wgt-flow-CFB" [set R-wgt-flow-CFB item 1 data]
+    if item 0 data = "R-exp-busi" [set R-exp-busi item 1 data]
+    if item 0 data = "R-can-CFB" [set R-can-CFB item 1 data]
+    if item 0 data = "R-neg-num-CFB" [set R-neg-num-CFB item 1 data]
+    if item 0 data = "R-neg-rent-CFB" [set R-neg-rent-CFB item 1 data]
+    
+    if item 0 data = "R-err-mean-firm" [set R-err-mean-firm item 1 data]
+    if item 0 data = "R-err-std-firm" [set R-err-std-firm item 1 data]
+
+  ]    
+  file-close-all
+  
+  ;-----------------------------------------------------------------------------------------------------------------------------------------------
+  ;read configuration file of accessibility model  
+  set A-v []
+  set A-rte []
+  file-open (word "Scenarios/" Study-Area "/Settings/Accessibility/Acc_Config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    set A-v lput item 1 data A-v
+    set A-rte lput item 5 data A-rte
+  ]
+  file-close-all
+  
+  file-open (word "Scenarios/" Study-Area "/Settings/Human Mobility/Mob_Config.csv")
+  set headers csv:from-row file-read-line
+  while [not file-at-end?]
+  [
+    let data csv:from-row file-read-line
+    if item 0 data = "M-CF-busi" [set M-CF-busi item 1 data]
+  ]
+  file-close-all
+end

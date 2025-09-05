@@ -1,0 +1,480 @@
+Businessmen-own
+[
+  BID
+  Category ;1- place for shopping; 2- place for leisuring
+  Space ;Space occupied, which determines the probability a consumer consuming here
+  Long ;longitude
+  Lat ;latitude
+  location-choice ;whether need to choose a location
+  Busi-size ;number of employees
+  emp-req ;number of employees required
+  emp-closure
+  flow ;Customner flow
+  age
+  closure ;number of consecutive years the growth rate reached the closure standard
+  dis-can
+
+  ; utility of businessman growth
+  Usize
+  Usizesq
+  Uage
+  Uflow
+]
+
+shoppings-own
+[
+  daytype ; Record the time of activity 1- weekday 2- weekend
+]
+
+leisures-own
+[
+  daytype ; Record the time of activity 1- weekday 2- weekend
+]
+
+;The Businessman Dynamics Model simulates the lifecycle and dynamics of businessman agents, including shop and leisure service agents, in an urban environment. 
+;It consists of three sub-models: the Businessman Birth Model, which simulates the emergence of new businessman agents mainly based on consumer demand; 
+;the Businessman Growth Model, which simulates the evolution of a businessman agent’s employee requirements; 
+;and the Businessman Closure Model, which simulates the closure of businesses due to insufficient customer flow or low growth rate.
+
+to Businessman-dynamics-model
+  set ave-shopping-flow-last ave-shopping-flow
+  set ave-leisure-flow-last ave-leisure-flow
+  
+  ask businessmen [set age age + 1 set busi-size count in-employee-neighbors]
+  ;update businessmen's customer flow
+  (ifelse
+    Dailyplan = "Simple" 
+    [
+      ask businessmen with [Category = 1]
+      [
+        let living-cus count people in-radius neighborhood
+        let we-cus 0
+        ask businessmen in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask firms in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-student-neighbors]
+        
+        set flow B-coe-liv-sho * living-cus + B-coe-we-sho * we-cus
+      ]
+      ask businessmen with [Category = 2]
+      [
+        let living-cus count people in-radius neighborhood
+        let we-cus 0
+        ask businessmen in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask firms in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-employee-neighbors]
+        ask schools in-radius neighborhood [set we-cus we-cus + count in-student-neighbors]
+        
+        set flow B-coe-liv-lei * living-cus + B-coe-liv-lei * we-cus
+      ]
+    ]
+    Dailyplan = "Typical" 
+    [
+      ask businessmen 
+      [
+        ifelse Category = 1 [set flow count my-shoppings * 7][set flow count my-leisures * 7]
+      ]
+      
+    ]
+    Dailyplan = "Full"
+    [
+      ask businessmen 
+      [
+        ifelse Category = 1 
+        [set flow count my-shoppings with [daytype =  1] * 5 + count my-shoppings with [daytype =  1] * 2]
+        [set flow count my-leisures with [daytype =  1] * 5 + count my-shoppings with [daytype =  1] * 2]
+      ]
+    ]
+  )
+  
+  set ave-shopping-flow sum [flow] of businessmen with [Category = 1] / count businessmen with [Category = 1]
+  set ave-leisure-flow sum [flow] of businessmen with [Category = 2] / count businessmen with [Category = 2]
+  
+  ;update CBs' agglomeration
+  ask CFBs
+  [
+    ;update agg
+    set agg-shopping sum [space] of Businessmen in-radius neighborhood with [Category = 1]
+    set agg-leisure sum [space] of Businessmen in-radius neighborhood with [Category = 2]
+    ;update traffic
+    set flow sum [flow] of in-rent-neighbors
+  ]
+  Businessman-closure
+  Businessman-growth
+  Businessman-birth
+  ask businessmen [set color white set size 0.5]
+  print "Businessman dynamics model finished"
+end
+
+to Businessman-birth
+  ;The total capacity of Businessmen is related to the population
+  
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "businessman birth " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Businessman birth " year ".csv")
+    file-print "BID,emp-req,Category"
+  ]
+  
+  let num-new-shopping round ((ave-Shopping-flow - ave-Shopping-flow-last) * B-coe-bir-busi-sho)
+  
+  if num-new-shopping > 0
+  [
+    create-Businessmen num-new-shopping
+    [
+      set BID max [BID] of Businessmen + 1
+      set Category 1
+      set location-choice 1
+      set emp-req round (random-normal B-mean-busi	B-std-busi)
+      if emp-req <= 0 [set emp-req 1]
+      set age 0
+      set long mean [long] of businessmen with [Category = 1]
+      set lat mean [lat] of businessmen with [Category = 1]
+      file-print (Word BID "," emp-req "," Category)
+    ]
+  ]
+  
+  let num-new-leisure round ((ave-Leisure-flow - ave-Leisure-flow-last) * B-coe-bir-busi-lei)
+  if num-new-leisure > 0
+  [
+    create-Businessmen num-new-shopping
+    [
+      set BID max [BID] of Businessmen + 1
+      set Category 2
+      set location-choice 1
+      set emp-req round (random-normal B-mean-busi	B-std-busi)
+      if emp-req <= 0 [set emp-req 1]
+      set age 0
+      set long mean [long] of businessmen with [Category = 2]
+      set lat mean [lat] of businessmen with [Category = 2]
+      file-print (Word BID "," emp-req "," Category)
+    ]
+  ]
+  file-close-all
+end
+
+to Businessman-growth
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "Businessman growth " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/business and school/Businessman growth " year ".csv")
+    file-print "BID,customer_flow,age,size,previous_emp_req,new_emp_req,emp_req_change"
+  ]
+  
+  ask Businessmen with [age != 0]
+  [
+    ;update accessibility (in this case, accessibility is the distance between residential location 
+    let emp-upper round (emp-req * B-up-busi + emp-req) ;set the upper limit
+    let emp-lower round (emp-req * B-low-busi + emp-req) ;set the lower limit
+    set emp-closure round (emp-req * B-SF-busi * B-low-busi + emp-req) ;the threshold of firm closure
+    let previous_emp_req emp-req
+    ;update capacity
+    set Usize B-coe-size-busi * ln emp-req
+    set Usizesq B-coe2-size-busi * ln emp-req * ln emp-req
+    set Uage B-coe-age-busi * ln age
+    if flow = 0 [set flow 1]
+    set Uflow B-coe-flow * ln flow
+    set emp-req round (exp (Usize + Usizesq + Uage + Uflow))
+    
+    ;Control the updated capacity within the upper and lower limits
+    (ifelse 
+      emp-req > emp-upper [set emp-req emp-upper]
+      emp-req < emp-upper [set emp-req emp-lower]
+      [set emp-req emp-req]
+    )
+    
+    
+    if bus-output = 1 [file-print (word BID "," flow "," age "," count in-employee-neighbors "," previous_emp_req "," emp-req "," (emp-req - previous_emp_req))]
+  ]
+  file-close-all
+end
+
+to Businessman-closure
+  ;Criteria 1: number of employees = 0
+  ;Criteria 2: growth rate continiously below a threshold
+  
+  if bus-output = 1
+  [
+    let filefolder (word "Output Data/" year "/Business and school")
+    let filename (word "businessman closure " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Business and school/Businessman closure "year".csv")
+    file-print "BID,size"
+  ]
+  
+  ;Check if number of employees is below the threshold for closure
+  ask businessmen [ifelse emp-req < emp-closure [set closure closure + 1][set closure 0]]
+  
+  ask Businessmen with [count in-employee-neighbors = 0 or closure > B-clo-year-busi]
+  [
+    if bus-output = 1 [file-print (Word BID "," count in-employee-neighbors)]
+    ;update working status of employees
+    ask in-employee-neighbors 
+    [
+      set status 3 set welong 0 set welat 0 
+      if color != black [set color red] 
+    ]
+    die
+  ]
+  
+  ;update daily plan of employees of closed businessmen
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Businessman closure")
+    let filename (word "Businessman employee list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Businessman closure/Businessman employee list " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"][file-print "PID,Weekday,Weekend"]
+  ]
+  
+  ask people with [color = red]
+  [
+    (ifelse
+      dailyplan = "Simple" []
+      dailyplan = "Typical" 
+      [
+        set chain-weekday []
+        set plan-weekday []
+        let target one-of people with [(status = 3 or status = 4) and length chain-weekday != 0 and color = white]
+        set chain-weekday [chain-weekday] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        generate-typical-new-plan  dur-weekday
+        if dai-output = "Always" [file-print (word PID "," plan-weekday)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+      dailyplan = "Full" 
+      [
+        set chain-weekday []
+        set chain-weekend []
+        set plan-weekday []
+        set plan-weekend []
+        let target one-of people with [(status = 3 or status = 4) and length chain-weekday != 0 and color = white]
+        set chain-weekday [chain-weekday] of target
+        set chain-weekend [chain-weekend] of target
+        let dur-weekday extract-duration [plan-weekday] of target
+        let dur-weekend extract-duration [plan-weekend] of target
+        generate-full-new-plans dur-weekday dur-weekend
+        if dai-output = "Always" [file-print (word PID "," plan-weekday "," plan-weekend)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+    )
+    set color white
+  ]
+  file-close
+  
+  if dai-output = "Always" 
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Businessman closure/Businessman employee list " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Businessman closure/DailyPlan_BusEmp.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+  
+  ;find a new location for shopping or leisure
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let filefolder (word "Output Data/" year "/Human mobility/Businessman closure")
+    let filename (word "Businessman consumer list " year ".csv")
+    clear-file filefolder filename
+    file-open (word "Output Data/" year "/Human mobility/Businessman closure/Businessman consumer list " year ".csv")
+    ifelse dailyplan = "Typical" [file-print "PID,Weekday"][file-print "PID,Weekday,Weekend"]
+  ]
+  
+  ask people with [color != black]
+  [
+    (ifelse
+      dailyplan = "Simple" []
+      dailyplan = "Typical"
+      [
+        let num-activity length plan-weekday
+        let i 0
+        let closed 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekday 
+          let long1 item 2 activity
+          let lat1 item 3 activity
+          if (item 0 activity = "shopping" or item 0 activity = "leisure") and item 1 activity = nobody
+          [
+            let original-CF one-of CFBs with [long = long1 and lat = lat1]
+            set activity replace-item 1 activity original-CF
+            set plan-weekday replace-item i plan-weekday activity
+            set closed 1
+          ]
+          set i i + 1
+        ]
+        
+        set i 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekday 
+          let long1 item 2 activity
+          let lat1 item 3 activity
+          if item 0 activity = "shopping" and [breed] of item 1 activity = CFBs
+          [
+            let pre-act item 1 (item (i - 1) plan-weekday)
+            let nex-act item 1 (item (i + 1) plan-weekday)
+            let new-bus find-a-new-businessman item 1 activity 1
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
+            let dur item 4 activity
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
+            set plan-weekday replace-item i plan-weekday activity
+          ]
+          if item 0 activity = "leisure" and [breed] of item 1 activity = CFBs
+          [
+            let pre-act item 1 (item (i - 1) plan-weekday)
+            let nex-act item 1 (item (i + 1) plan-weekday)
+            let new-bus find-a-new-businessman item 1 activity 2
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
+            let dur item 4 activity
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
+            set plan-weekday replace-item i plan-weekday activity
+          ]
+          set i i + 1
+        ]
+        
+        if dai-output = "Always" and closed = 1 [file-print (Word PID "," plan-weekday)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+      dailyplan = "Full"
+      [
+        let num-activity length plan-weekday
+        let i 0
+        let closed 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekday 
+          let long1 item 2 activity
+          let lat1 item 3 activity
+          if (item 0 activity = "shopping" or item 0 activity = "leisure") and item 1 activity = nobody
+          [
+            let original-CF one-of CFBs with [long = long1 and lat = lat1]
+            set activity replace-item 0 activity original-CF
+            set plan-weekday replace-item i plan-weekday activity
+            set closed 1
+          ]
+          set i i + 1
+        ]
+        
+        set i 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekday 
+          let long1 item 2 activity
+          let lat1 item 3 activity
+          if item 0 activity = "shopping" and [breed] of item 1 activity = CFBs
+          [
+            let new-bus find-a-new-businessman item 1 activity 1
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus transport-mode)
+            set plan-weekday replace-item i plan-weekday activity
+          ]
+          if item 0 activity = "leisure" and [breed] of item 1 activity = CFBs
+          [
+            let new-bus find-a-new-businessman item 1 activity 2
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus transport-mode)
+            set plan-weekday replace-item i plan-weekday activity
+          ]
+          set i i + 1
+        ]
+        
+        set num-activity length plan-weekend
+        set i 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekend 
+          let long1 item 2 activity
+          let lat1 item 3 activity
+          if (item 0 activity = "shopping" or item 0 activity = "leisure") and item 1 activity = nobody
+          [
+            let original-CF one-of CFBs with [long = long1 and lat = lat1]
+            set activity replace-item 0 activity original-CF
+            set plan-weekend replace-item i plan-weekend activity
+          ]
+          set i i + 1
+        ]
+        
+        set i 0
+        while [i < num-activity]
+        [
+          let activity item i plan-weekend 
+          if item 0 activity = "shopping" and [breed] of item 1 activity = CFBs
+          [
+            let new-bus find-a-new-businessman item 1 activity 1
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 2]
+            let dur item 4 activity
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
+            set plan-weekend replace-item i plan-weekend activity
+          ]
+          if item 0 activity = "leisure" and [breed] of item 1 activity = CFBs
+          [
+            let new-bus find-a-new-businessman item 1 activity 2
+            create-shopping-with new-bus
+            ask one-of my-shoppings with [other-end = new-bus][set daytype 2]
+            let dur item 4 activity
+            let transport-mode item 5 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
+            set plan-weekend replace-item i plan-weekend activity
+          ]
+          set i i + 1
+        ]
+        
+        if dai-output = "Always" and closed = 1 [file-print (word pid "," plan-weekday "," plan-weekend)]
+        if dai-output = "Year-End" [set plan-changed 1]
+      ]
+    )
+    set color white
+  ]
+  file-close-all
+  
+  ;update xml
+  if dai-output = "Always" and dailyplan != "Simple"
+  [
+    let csv_file (list "csv_file" (word "Output Data/" year "/Human mobility/Businessman closure/Businessman consumer list " year ".csv"))
+    let xml_file (list "xml_file" "Output Data/DailyPlan.xml")
+    let second_path (list "second_path" (word "Output Data/" year "/Human mobility/Businessman closure/DailyPlan_BusCon.xml"))
+    let speeds (list "speeds" (word A-v))
+    ifelse route = 1
+    [
+      let params (list csv_file xml_file second_path speeds)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan" "POST" params []
+      print request
+    ]
+    [
+      let detour_factors (list "detour_factors" (word A-rte))
+      let params (list csv_file xml_file second_path speeds detour_factors)
+      let request web:make-request "http://127.0.0.1:5000/generate_full_plan_without_route" "POST" params []
+      print request
+    ]
+  ]
+  ;update capacity of commercial buildings
+  ask CFBs [set available-space capacity - sum [space] of in-rent-neighbors]
+  
+end

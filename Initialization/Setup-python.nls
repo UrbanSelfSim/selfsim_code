@@ -1,0 +1,23 @@
+to setup-python
+  py:setup py:python
+  (py:run
+    ; dbscan python packages
+    "from sklearn.cluster import DBSCAN"
+    "from sklearn.datasets import make_blobs"
+    "from itertools import product"
+    "from pulp import *"
+    "import numpy as np"
+    "from math import sqrt"
+    "import random"
+    "import matplotlib.pyplot as plt"
+    "from scipy.optimize import curve_fit"
+    "random.seed(0)"
+    "import os"
+    "import shutil"
+    "from scipy.stats import gamma"
+    "import pandas as pd"
+    "from sklearn.ensemble import RandomForestRegressor"
+    "from sklearn.ensemble import RandomForestClassifier"
+    "from io import StringIO"
+  )
+end

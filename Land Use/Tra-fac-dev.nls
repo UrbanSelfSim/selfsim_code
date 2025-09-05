@@ -1,0 +1,106 @@
+;This model provides two alternative approaches for transport facility location: 
+;a node-based method using the P-median model and a link-based method based on flow-capturing. 
+;The current code implementation is not directly executable; instead, it requires additional procedures to compile and export input data according to the user’s specific requirements.
+
+
+TFs-own
+[
+  TFID
+  Category
+  Long
+  Lat
+]
+
+to node-based
+  ;Step 1: p-median algorithm
+  py:set "users" "users.csv"
+  py:set "facilities" "facilities.csv"
+  py:set "p" 10 ;number of transport facilities
+  py:set "selected_file" "selected.csv" 
+  py:set "assignments_file" "assigned.csv"
+  py:set "start_tfid" max [TFID] of TFs + 1
+  
+  (py:run
+    "args = ['python', 'Land Use/P-median.py' , '--users' , users, '--facilities' , facilities, '--p' p, '--selected_file' selected_file, '--assignments_file', assignments_file, '--start_tfid', start_tfid]"
+    "subprocess.run(args)"
+  )
+  
+  ;Step 2: create transport facility agent
+  file-open "selected.csv"
+  let headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    create-TFs 1
+    [
+      set category "Station"
+      set TFID item 0 data
+      set Long item 1 data
+      set Lat item 2 data
+      let xy gis:project-lat-lon Long Lat
+      set xcor item 0 xy
+      set ycor item 1 xy
+    ]
+  ]
+  file-close
+  
+  ;Step 3: create links (connect facility and user)
+  file-open "assigned.csv"
+  set headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    let User turtle item 0 data
+    let facility one-of TFs with [TFID = item 1 data]
+    ask user [create-assign-with facility]
+  ]
+    
+end
+
+to link-based
+  ;Only applicable if the daily plan contains a Route element.  
+  
+  ;Step 1: low-capturing
+  py:set "xml_path" "Output Data/DailyPlan.xml"
+  py:set "road_network_path" (word "Scenarios/" study-area "/Road/private_vehicle.graphml")
+  py:set "target_ids_csv" "users.csv"
+  py:set "number_facility" 3
+  py:set "start_tfid" max [TFID] of TFs + 1
+  py:set "facilities_output_path" "facilities.csv"
+  py:set "assignments_output_path" "assignments.csv"
+  
+  (py:run
+    "args = ['python', 'Land Use/Flow_capturing.py' , '--xml_path' , xml_path, '--road_network_path' , road_network_path, '--target_ids_csv' target_ids_csv, '--number_facility' number_facility, '--start_tfid', start_tfid, '--facilities_output_path', facilities_output_path, '--assignments_output_path', assignments_output_path]"
+    "subprocess.run(args)"
+  )
+  
+  ;Step 2: create transport facility agent
+  file-open "facilities.csv"
+  let headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    create-TFs 1
+    [
+      set category "Station"
+      set TFID item 0 data
+      set Long item 1 data
+      set Lat item 2 data
+      let xy gis:project-lat-lon Long Lat
+      set xcor item 0 xy
+      set ycor item 1 xy
+    ]
+  ]
+  file-close
+  
+  ;Step 3: create links (connect facility and user)
+  file-open "assignments.csv"
+  set headers csv:from-row file-read-line
+  while [not file-at-end?] 
+  [
+    let data csv:from-row file-read-line
+    let User turtle item 0 data
+    let facility one-of TFs with [TFID = item 1 data]
+    ask user [create-assign-with facility]
+  ]
+end

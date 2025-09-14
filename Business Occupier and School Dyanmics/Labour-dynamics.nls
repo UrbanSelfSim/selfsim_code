@@ -108,6 +108,10 @@ to labour-dynamics
     ask turtles with [(is-firm? self or is-school? self or is-businessman? self) and color = yellow][set color white]
   ]
   
+  ask businessmen [set busi-size count in-employee-neighbors]
+  ask firms [set size-firm count in-employee-neighbors]
+  ask schools [set lab-sch count in-employee-neighbors]
+  
   ;update income
   ask people with [color = blue][set income 0]
   ask people with [color = yellow][set income random-normal (mean [income] of people with [status = 2]) 1 if income < P-min-inco [set income P-min-inco]]  

@@ -354,21 +354,25 @@ to setup
     "    shutil.rmtree(dst_folder)"
     "shutil.copytree(src_folder, dst_folder)"
   )
-
-  let dailyplan_file (word "Scenarios/" study-area "/Daily Plan/DailyPlan.xml")
-  let dst_file (word "Output Data/DailyPlan.xml")
-  py:set "dailyplan_file" dailyplan_file
-  py:set "dst_file" dst_file
-  (py:run
-    "if os.path.exists(dst_file):"
-    "    os.remove(dst_file)"
-    "shutil.copy2(dailyplan_file, dst_file)"
-  )
 end
 
 to go
   setup-python
   reset-timer
+
+  if dailyplan != "Simple" and year = base-year
+  [
+    let dailyplan_file (word "Scenarios/" study-area "/Daily Plan/DailyPlan.xml")
+    let dst_file (word "Output Data/DailyPlan.xml")
+    py:set "dailyplan_file" dailyplan_file
+    py:set "dst_file" dst_file
+    (py:run
+      "if os.path.exists(dst_file):"
+      "    os.remove(dst_file)"
+      "shutil.copy2(dailyplan_file, dst_file)"
+    )
+  ]
+
   set labor-last count people with [status = 2 or status = 3]
   set year year + 1
 

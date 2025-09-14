@@ -286,7 +286,7 @@ to Businessman-closure
     ]
   ]
   
-  ;find a new location for shopping or leisure
+  ;find a new location for shopping or leisure for consumers
   if dai-output = "Always" and dailyplan != "Simple"
   [
     let filefolder (word "Output Data/" year "/Human mobility/Businessman closure")
@@ -369,7 +369,8 @@ to Businessman-closure
           if (item 0 activity = "shopping" or item 0 activity = "leisure") and item 1 activity = nobody
           [
             let original-CF one-of CFBs with [long = long1 and lat = lat1]
-            set activity replace-item 0 activity original-CF
+            if original-CF = nobody [print (Word "Can't find a CF with Long = " long1 " Lat = " lat1)]
+            set activity replace-item 1 activity original-CF
             set plan-weekday replace-item i plan-weekday activity
             set closed 1
           ]
@@ -387,8 +388,9 @@ to Businessman-closure
             let new-bus find-a-new-businessman item 1 activity 1
             create-shopping-with new-bus
             ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
+            let dur item 4 activity
             let transport-mode item 5 activity
-            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus transport-mode)
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
             set plan-weekday replace-item i plan-weekday activity
           ]
           if item 0 activity = "leisure" and [breed] of item 1 activity = CFBs
@@ -397,7 +399,8 @@ to Businessman-closure
             create-shopping-with new-bus
             ask one-of my-shoppings with [other-end = new-bus][set daytype 1]
             let transport-mode item 5 activity
-            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus transport-mode)
+            let dur item 4 activity
+            set activity (list "shopping" new-bus [long] of new-bus [lat] of new-bus dur transport-mode)
             set plan-weekday replace-item i plan-weekday activity
           ]
           set i i + 1
@@ -413,7 +416,7 @@ to Businessman-closure
           if (item 0 activity = "shopping" or item 0 activity = "leisure") and item 1 activity = nobody
           [
             let original-CF one-of CFBs with [long = long1 and lat = lat1]
-            set activity replace-item 0 activity original-CF
+            set activity replace-item 1 activity original-CF
             set plan-weekend replace-item i plan-weekend activity
           ]
           set i i + 1

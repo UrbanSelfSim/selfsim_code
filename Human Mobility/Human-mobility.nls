@@ -526,6 +526,7 @@ to residential-change-full [new-loc vo]
   ;update daily plan on weekday
   let num-act length plan-weekday 
   let old-plan plan-weekday
+  print (word "old-plan: " old-plan)
   ask my-shoppings [die]
   ask my-leisures [die]
   let i 0
@@ -685,9 +686,9 @@ to residential-change-full [new-loc vo]
       ask nex-activity-loc [set nex-dis distance cur-loc]
       
       ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
-      let cur-loc1 item 0 activity
-      let pre-activity-loc1 item 0 (item (i - 1) plan-weekend)
-      let nex-activity-loc1 item 0 (item (i + 1) plan-weekend)
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekend)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekend)
       ask CB-shop-candidates
       [
         set my-distance distance pre-activity-loc1
@@ -714,16 +715,18 @@ to residential-change-full [new-loc vo]
     if item 0 activity = "leisure" 
     [
       ;Calculate the distance between the shop location and the previous and next activities in the original daily plan
-      let cur-loc item 0 (item 1 old-plan)
-      let pre-activity-loc item 0 (item (i - 1) old-plan)
-      let nex-activity-loc item 0 (item (i + 1) old-plan)
-      let pre-dis distancexy pre-activity-loc cur-loc
-      let nex-dis distancexy nex-activity-loc cur-loc
+      let cur-loc item 1 (item 1 old-plan)
+      let pre-activity-loc item 1 (item (i - 1) old-plan)
+      let nex-activity-loc item 1 (item (i + 1) old-plan)
+      let pre-dis 0
+      ask pre-activity-loc [set pre-dis distance cur-loc]
+      let nex-dis 0
+      ask nex-activity-loc [set nex-dis distance cur-loc]
       
       ;ask candidates to calaculate the distance between the previous and next activities in the updated daily plan
-      let cur-loc1 item 0 activity
-      let pre-activity-loc1 item 0 (item (i - 1) plan-weekend)
-      let nex-activity-loc1 item 0 (item (i + 1) plan-weekend)
+      let cur-loc1 item 1 activity
+      let pre-activity-loc1 item 1 (item (i - 1) plan-weekend)
+      let nex-activity-loc1 item 1 (item (i + 1) plan-weekend)
       ask CB-leisure-candidates
       [
         set my-distance distance pre-activity-loc1

@@ -985,7 +985,7 @@ to mandatory-residence-renter
       set livelong [long] of target
       set livelat [lat] of target
       move-to target
-      set color yellow
+      if color != black [set color yellow]
     ]
     set mandatory 0 set flexible 0 set move 0 
     ask target [set available-space capacity - sum [residence-size] of in-purchase-neighbors - sum [residence-size] of in-rent-neighbors]

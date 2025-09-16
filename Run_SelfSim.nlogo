@@ -412,27 +412,27 @@ to go
   check-item
   output-businessman
   labour-dynamics
-  check-item
-
-;  ;Residential location choice and real estate price model
-  res-loc-cho
-  check-item
-  fir-loc-cho
-  check-item
-  bus-loc-cho
-  check-item
-
-  activity-facility-development-model
-
-  Year-End-Output
-  ask links [hide-link]
-  tick
-  let filefolder (word "Output Data/" year)
-  let filename (word "NetlogoSim" year ".csv")
-  py:set "filename" filename
-  clear-file filefolder filename
-  export-world (word "Output Data/" year "/NetlogoSim" year ".csv")
-  print (word "Calculation time: " timer " seconds.")
+;  check-item
+;
+;;;  ;Residential location choice and real estate price model
+;  res-loc-cho
+;  check-item
+;  fir-loc-cho
+;  check-item
+;  bus-loc-cho
+;  check-item
+;
+;  activity-facility-development-model
+;
+;  Year-End-Output
+;  ask links [hide-link]
+;  tick
+;  let filefolder (word "Output Data/" year)
+;  let filename (word "NetlogoSim" year ".csv")
+;  py:set "filename" filename
+;  clear-file filefolder filename
+;  export-world (word "Output Data/" year "/NetlogoSim" year ".csv")
+;  print (word "Calculation time: " timer " seconds.")
 end
 
 to clear-file [folder file]
@@ -613,7 +613,7 @@ MONITOR
 309
 147
 Number of students
-count people with [status = 1]
+count students
 17
 1
 11
@@ -853,7 +853,7 @@ MONITOR
 598
 148
 Employees of schools
-sum [school-size] of schools
+sum [lab-sch] of schools
 17
 1
 11
@@ -864,7 +864,7 @@ MONITOR
 439
 401
 Employees of firms
-sum [size-firm] of firms
+sum [count in-employee-neighbors] of firms
 17
 1
 11

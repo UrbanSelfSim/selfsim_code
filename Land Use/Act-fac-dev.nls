@@ -22,7 +22,7 @@ to develop-new-RFs
   ;(1)	Step1: Calculate the city-scale Demand for New Activity Facilities 
   let cap-res-tot sum [capacity] of RFs
   let pop-tot count people
-  let rat-res-tot pop-tot / pop-tot
+  let rat-res-tot pop-tot / cap-res-tot
   
   ;(2)	Step2: Determine Whether to Add New Activity Facilities on each grid
   if rat-res-tot > L-det-new

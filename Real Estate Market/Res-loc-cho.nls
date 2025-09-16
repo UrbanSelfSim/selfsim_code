@@ -283,7 +283,7 @@ to household-move-decision
     file-close
   ]
   
-  ask households with [mandatory = 1][set acc-current mean [acc-current] of households with [mandatory = 0 and move = 1]]
+  ask households with [mandatory = 1][set acc-current mean [acc-current] of households with [mandatory = 0]]
   
   ;Determine whether to purchase or rent a residence: move = 1 purchase move = 2 rent
   ask households with [move = 1]
@@ -318,7 +318,7 @@ to residence-location-choice
       [
         let candidate other-end
         let distance1 0
-        ask people with [hhd = purchaser]
+        ask people with [hhd = [hhd] of purchaser]
         [
           if status = 1 and education != 0 
           [
@@ -333,10 +333,11 @@ to residence-location-choice
             set acc-candidate 1 / distance1
           ]
         ]
+        ifelse count people with [hhd = [hhd] of purchaser and status = 2] + count people with [hhd = [hhd] of purchaser and status = 1 and education != 0] = 0
+        [set accessibility 0]
+        [set accessibility sum [acc-candidate] of people with [hhd = [hhd] of purchaser] / (count people with [hhd = [hhd] of purchaser and status = 2] + count people with [hhd = [hhd] of purchaser and status = 1 and education != 0])]
       ]
-      ifelse count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0] = 0
-      [set acc-current 0]
-      [set acc-current sum [acc-current] of people with [hhd = [hhd] of myself] / (count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0])]
+     
     ]
     
     ask households with [move = 2]
@@ -346,7 +347,7 @@ to residence-location-choice
       [
         let candidate other-end
         let distance1 0
-        ask people with [hhd = renter]
+        ask people with [hhd = [hhd] of renter]
         [
           if status = 1 and education != 0 
           [
@@ -361,10 +362,10 @@ to residence-location-choice
             set acc-candidate 1 / distance1
           ]
         ]
+        ifelse count people with [hhd = [hhd] of renter and status = 2] + count people with [hhd = [hhd] of renter and status = 1 and education != 0] = 0
+        [set accessibility 0]
+        [set accessibility sum [acc-candidate] of people with [hhd = [hhd] of renter] / (count people with [hhd = [hhd] of renter and status = 2] + count people with [hhd = [hhd] of renter and status = 1 and education != 0])]
       ]
-      ifelse count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0] = 0
-      [set acc-current 0]
-      [set acc-current sum [acc-current] of people with [hhd = [hhd] of myself] / (count people with [hhd = [hhd] of myself and status = 2] + count people with [hhd = [hhd] of myself and status = 1 and education != 0])]
     ]
   ]
   [

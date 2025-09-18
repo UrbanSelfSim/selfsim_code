@@ -502,7 +502,7 @@ to OFF-transaction
       ]
       [
         set target max-one-of CFFs with [available-space > 0] [available-space]
-        set office-size [available-space] of CFFs
+        set office-size [available-space] of target
       ]
       create-rent-with target
       set location-choice 0
